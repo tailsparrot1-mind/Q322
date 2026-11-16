@@ -391,7 +391,7 @@ class VkusApp:
                 self.root.update_idletasks()
                 self.license_store_webview = WebView(
                     browser_host,
-                    url='https://id-preview--78bbce34-69ac-42ab-9e42-f528ea437805.lovable.app',
+                    url='https://vkus-license-market.lovable.app',
                     untrusted=True,
                     open_external=False,
                     user_agent='VkusDesktop/3.28',

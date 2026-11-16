@@ -261,6 +261,7 @@ class VkusApp:
             ('⌕', 'Поиск', self._show_search),
             ('▤', 'Сообщения', self._show_messages),
             ('⇄', 'Биржа', self._show_exchange),
+            ('▧', 'Доска объявлений', self._show_marketplace),
             ('ⓘ', 'О программе', self._show_about),
         ]
         self.nav_buttons = {}
@@ -348,6 +349,21 @@ class VkusApp:
             self._messages_page(self.main)
         else:
             self.messages_page.pack(fill='both', expand=True)
+
+    def _show_marketplace(self):
+        """Show the announcement board as a first-class Vkus navigation page."""
+        self._restore_main_shell()
+        self._set_nav_active('Доска объявлений')
+        if self.right is not None:
+            self.right.grid_remove()
+        self.main.grid_configure(columnspan=2, padx=(10, 10))
+        self._clear_main()
+        page = getattr(self, 'marketplace_page', None)
+        if page is None or not page.winfo_exists():
+            from .exchange_marketplace import open_cloud_marketplace_window
+            self.marketplace_page = open_cloud_marketplace_window(self.main)
+        else:
+            page.pack(fill='both', expand=True)
 
     def _show_exchange(self):
         """Display Биржа as a full in-app tab, matching the approved full-screen reference."""
@@ -459,10 +475,6 @@ class VkusApp:
                 self.exchange_categories_selected = selected
                 self._exchange_redraw()
                 return
-        if 1095 <= x <= 1328 and 382 <= y <= 426:
-            from .exchange_marketplace import open_cloud_marketplace_window
-            open_cloud_marketplace_window(self.root)
-            return
         if 1360 <= x <= 1618 and 373 <= y <= 700:
             messagebox.showinfo('Что можно найти?',
                 'Vkus помогает находить целевую аудиторию для любой ниши: потенциальных покупателей, людей с актуальной потребностью, обсуждения и рекомендации, связанные с вашим продуктом или услугой.\n\nНапример, цветочный магазин ищет людей, которым нужны цветы, а не сотрудников.', parent=self.exchange_window); return

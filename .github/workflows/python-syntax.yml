@@ -68,5 +68,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Vkus-Q322-license-store-webview
-          path: artifacts/*.png
+          path: artifacts/*
           if-no-files-found: error

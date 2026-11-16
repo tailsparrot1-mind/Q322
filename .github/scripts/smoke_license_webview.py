@@ -3,110 +3,145 @@ import re
 import sys
 import time
 from pathlib import Path
-import tkinter as tk
 from urllib.parse import urlparse
 
 from PIL import ImageGrab
-from tkwry import WebView
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
-from vkus.license_store import LICENSE_STORE_URL, LICENSE_STORE_USER_AGENT
 
-root = tk.Tk()
-root.title("Vkus License Store — in-app WebView verification")
-root.geometry("1180x760")
-host = tk.Frame(root, bg="#030817")
-host.pack(fill="both", expand=True)
-root.update_idletasks()
+from vkus.app import VkusApp
+from vkus.license_store import LICENSE_STORE_URL
 
+
+app = None
 errors = []
-page_events = []
-web = WebView(
-    host,
-    url=LICENSE_STORE_URL,
-    untrusted=True,
-    open_external=False,
-    user_agent=LICENSE_STORE_USER_AGENT,
-    on_page_load=lambda event, url: page_events.append((getattr(event, "name", str(event)), url)),
-)
-web.when_failed(errors.append)
+probe = {"pending": False, "value": None, "error": None}
 
-def pump_until(predicate, timeout, description):
-    deadline = time.monotonic() + timeout
+try:
+    # Launch the real Vkus desktop application, then unlock only inside this
+    # automated test so the smoke test can navigate to the actual store tab.
+    app = VkusApp()
+    root = app.root
+    root.geometry("1180x760")
+    root.update_idletasks()
+    root.update()
+    app._unlock()
+    root.update_idletasks()
+    root.update()
+    app._show_license_store()
+    root.update_idletasks()
+    root.update()
+
+    web = getattr(app, "license_store_webview", None)
+    if web is None:
+        raise RuntimeError("Vkus did not create the embedded License Store WebView")
+
+    def probe_page():
+        if probe["pending"] or probe["value"] is not None or probe["error"] is not None:
+            return
+        probe["pending"] = True
+
+        def on_value(value):
+            probe["pending"] = False
+            probe["value"] = value
+
+        def on_error(exc):
+            probe["pending"] = False
+            probe["error"] = str(exc)
+
+        web.eval_js_with_callback(
+            """JSON.stringify({
+              url: location.href,
+              title: document.title,
+              readyState: document.readyState,
+              text: document.body ? document.body.innerText : ""
+            })""",
+            on_value,
+            on_error=on_error,
+        )
+
+    deadline = time.monotonic() + 60
+    snapshot = None
     while time.monotonic() < deadline:
         root.update()
         if errors:
-            raise RuntimeError(f"Embedded WebView creation failed: {errors[0]}")
-        if predicate():
-            return
+            raise RuntimeError("Vkus Store WebView error: " + errors[0])
+        if web.ready:
+            probe_page()
+        if probe["error"]:
+            raise RuntimeError("Could not inspect storefront in Vkus: " + probe["error"])
+        if probe["value"] is not None:
+            try:
+                candidate = json.loads(probe["value"])
+            except Exception:
+                candidate = None
+            if candidate:
+                body_text = (candidate.get("text") or "").replace("\\u00a0", " ")
+                normalized = re.sub(r"\\s+", " ", body_text).strip()
+                required = ("79 900", "174 000", "238 000", "BASE", "STANDARD", "PREMIUM")
+                missing = [item for item in required if item.casefold() not in normalized.casefold()]
+                if not missing:
+                    snapshot = candidate
+                    break
+                # Re-probe while the Lovable SPA is still hydrating/rendering.
+                probe["value"] = None
+                time.sleep(0.35)
         time.sleep(0.05)
-    raise RuntimeError(f"Timed out waiting for {description}; page events={page_events}; url={getattr(web, 'url', None)!r}")
 
-pump_until(lambda: bool(web.ready), 30, "native WebView readiness")
-pump_until(
-    lambda: any("finished" in str(event).lower() and url.startswith(LICENSE_STORE_URL) for event, url in page_events),
-    45,
-    "published License Store page load",
-)
+    if snapshot is None:
+        last_text = ""
+        if probe["value"]:
+            try:
+                last_text = (json.loads(probe["value"]).get("text") or "")[:1200]
+            except Exception:
+                last_text = str(probe["value"])[:1200]
+        raise RuntimeError(
+            "Published License Store did not render all three tariffs inside Vkus "
+            f"within 60 seconds. Current WebView URL={getattr(web, 'url', None)!r}; "
+            f"page text={last_text!r}"
+        )
 
-probe = {}
-script = """JSON.stringify({
-  url: location.href,
-  title: document.title,
-  readyState: document.readyState,
-  text: document.body ? document.body.innerText : ""
-})"""
-web.eval_js_with_callback(
-    script,
-    lambda value: probe.setdefault("value", value),
-    on_error=lambda exc: probe.setdefault("error", str(exc)),
-)
-pump_until(lambda: "value" in probe or "error" in probe, 20, "store content inspection")
-if "error" in probe:
-    raise RuntimeError("Could not inspect published store page: " + probe["error"])
+    actual_url = snapshot.get("url", "")
+    if urlparse(actual_url).hostname != urlparse(LICENSE_STORE_URL).hostname:
+        raise RuntimeError(f"Vkus opened an unexpected destination: {actual_url}")
 
-snapshot = json.loads(probe["value"])
-actual_url = snapshot.get("url", "")
-if urlparse(actual_url).hostname != urlparse(LICENSE_STORE_URL).hostname:
-    raise RuntimeError(f"Unexpected WebView destination: {actual_url}")
+    body = re.sub(r"\\s+", " ", (snapshot.get("text") or "").replace("\\u00a0", " ")).strip()
+    if "log in" in body.casefold() and "continue with google" in body.casefold():
+        raise RuntimeError("Vkus opened the Lovable editor/login page instead of the public storefront")
 
-body = re.sub(r"\s+", " ", (snapshot.get("text") or "").replace("\u00a0", " ")).strip()
-required = ("79 900", "174 000", "238 000", "BASE", "STANDARD", "PREMIUM")
-missing = [item for item in required if item.casefold() not in body.casefold()]
-if missing:
-    raise RuntimeError(
-        "Published storefront content is incomplete or not rendered; "
-        f"missing={missing}; title={snapshot.get('title')!r}; body_excerpt={body[:1200]!r}"
+    out = Path("artifacts")
+    out.mkdir(exist_ok=True)
+    ImageGrab.grab().save(out / "vkus-license-store-in-real-vkus-hero.png")
+    web.eval_js("document.getElementById('pricing')?.scrollIntoView({block: 'start', behavior: 'instant'});")
+    end = time.monotonic() + 1.5
+    while time.monotonic() < end:
+        root.update()
+        time.sleep(0.05)
+    ImageGrab.grab().save(out / "vkus-license-store-in-real-vkus-pricing.png")
+
+    report = {
+        "result": "PASS",
+        "test_scope": "actual VkusApp launched under Xvfb; local lock bypassed only by test harness",
+        "destination": actual_url,
+        "title": snapshot.get("title"),
+        "document_ready_state": snapshot.get("readyState"),
+        "required_store_content": ["79 900", "174 000", "238 000", "BASE", "STANDARD", "PREMIUM"],
+        "screenshots": [
+            "vkus-license-store-in-real-vkus-hero.png",
+            "vkus-license-store-in-real-vkus-pricing.png",
+        ],
+    }
+    (out / "vkus-license-store-webview-report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-if "log in" in body.casefold() and "continue with google" in body.casefold():
-    raise RuntimeError("WebView opened the Lovable editor/login page instead of the public storefront")
-
-out = Path("artifacts")
-out.mkdir(exist_ok=True)
-ImageGrab.grab().save(out / "vkus-license-store-in-app-hero.png")
-web.eval_js("document.getElementById('pricing')?.scrollIntoView({block: 'start', behavior: 'instant'});")
-end = time.monotonic() + 1.5
-while time.monotonic() < end:
-    root.update()
-    time.sleep(0.05)
-ImageGrab.grab().save(out / "vkus-license-store-in-app-pricing.png")
-
-report = {
-    "result": "PASS",
-    "destination": actual_url,
-    "title": snapshot.get("title"),
-    "document_ready_state": snapshot.get("readyState"),
-    "required_store_content": list(required),
-    "page_load_events": [{"event": event, "url": url} for event, url in page_events],
-    "screenshot_files": [
-        "vkus-license-store-in-app-hero.png",
-        "vkus-license-store-in-app-pricing.png",
-    ],
-}
-(out / "vkus-license-store-webview-report.json").write_text(
-    json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-)
-web.destroy()
-root.destroy()
-print("Published Vkus License Store loaded inside the Tk host; page URL and all three license prices verified.")
+    print("PASS: the published Vkus License Store rendered inside the real Vkus desktop window.")
+finally:
+    if app is not None:
+        try:
+            app.close()
+        except Exception:
+            try:
+                app.root.destroy()
+            except Exception:
+                pass

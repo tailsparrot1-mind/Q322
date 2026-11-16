@@ -10,7 +10,7 @@ from vkus.checks import build_checks
 from vkus.check_runner import CheckRunner, CheckResult
 from vkus.storage import load_settings, save_settings, setup_logging
 from vkus.lock_screen import LockScreen
-from vkus.license_store import LICENSE_STORE_URL, LICENSE_STORE_USER_AGENT
+from vkus.license_store import LICENSE_STORE_URL
 
 try:
     from PIL import Image, ImageTk, ImageEnhance
@@ -402,7 +402,6 @@ class VkusApp:
                     url=LICENSE_STORE_URL,
                     untrusted=True,
                     open_external=False,
-                    user_agent=LICENSE_STORE_USER_AGENT,
                     on_page_load=self._record_license_store_page_load,
                 )
                 self.license_store_webview.when_failed(

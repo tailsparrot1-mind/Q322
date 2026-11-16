@@ -77,8 +77,8 @@ try:
             except Exception:
                 candidate = None
             if candidate:
-                body_text = (candidate.get("text") or "").replace("\\u00a0", " ")
-                normalized = re.sub(r"\\s+", " ", body_text).strip()
+                body_text = (candidate.get("text") or "").replace("\u00a0", " ")
+                normalized = re.sub(r"\s+", " ", body_text).strip()
                 required = ("79 900", "174 000", "238 000", "BASE", "STANDARD", "PREMIUM")
                 missing = [item for item in required if item.casefold() not in normalized.casefold()]
                 if not missing:
@@ -106,7 +106,7 @@ try:
     if urlparse(actual_url).hostname != urlparse(LICENSE_STORE_URL).hostname:
         raise RuntimeError(f"Vkus opened an unexpected destination: {actual_url}")
 
-    body = re.sub(r"\\s+", " ", (snapshot.get("text") or "").replace("\\u00a0", " ")).strip()
+    body = re.sub(r"\s+", " ", (snapshot.get("text") or "").replace("\u00a0", " ")).strip()
     if "log in" in body.casefold() and "continue with google" in body.casefold():
         raise RuntimeError("Vkus opened the Lovable editor/login page instead of the public storefront")
 

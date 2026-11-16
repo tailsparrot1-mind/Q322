@@ -73,7 +73,7 @@ try:
     out = Path("artifacts")
     out.mkdir(exist_ok=True)
     screen = ImageGrab.grab()
-    host = web.master
+    host = app.license_store_browser_host
     x, y = host.winfo_rootx(), host.winfo_rooty()
     width, height = host.winfo_width(), host.winfo_height()
     page_image = screen.crop((x, y, x + width, y + height))

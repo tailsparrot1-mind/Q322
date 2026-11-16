@@ -404,6 +404,7 @@ class VkusApp:
             try:
                 from tkwry import WebView
                 self.root.update_idletasks()
+                self.license_store_browser_host = browser_host
                 self.license_store_webview = WebView(
                     browser_host,
                     url=LICENSE_STORE_URL,

@@ -43,7 +43,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Vkus-Q322-marketplace-screenshots
-          path: artifacts/*.png
+          path: artifacts/*
           if-no-files-found: error
 
   license-store-webview-smoke:
@@ -62,7 +62,7 @@ jobs:
       - name: Install embedded WebView
         run: |
           python -m venv .venv
-          .venv/bin/pip install Pillow tkwry==0.1.9
+          .venv/bin/pip install Pillow selenium keyring tkwry==0.1.9
       - name: Launch Vkus Store inside Tk frame
         run: xvfb-run -a .venv/bin/python .github/scripts/smoke_license_webview.py
       - uses: actions/upload-artifact@v4

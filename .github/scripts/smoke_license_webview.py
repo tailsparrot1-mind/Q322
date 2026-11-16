@@ -67,7 +67,7 @@ actual_url = snapshot.get("url", "")
 if urlparse(actual_url).hostname != urlparse(LICENSE_STORE_URL).hostname:
     raise RuntimeError(f"Unexpected WebView destination: {actual_url}")
 
-body = re.sub(r"\\s+", " ", (snapshot.get("text") or "").replace("\\u00a0", " ")).strip()
+body = re.sub(r"\s+", " ", (snapshot.get("text") or "").replace("\u00a0", " ")).strip()
 required = ("79 900", "174 000", "238 000", "BASE", "STANDARD", "PREMIUM")
 missing = [item for item in required if item.casefold() not in body.casefold()]
 if missing:

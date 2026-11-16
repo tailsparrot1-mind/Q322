@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 import time
 from pathlib import Path
 import tkinter as tk
@@ -7,6 +8,9 @@ from urllib.parse import urlparse
 
 from PIL import ImageGrab
 from tkwry import WebView
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 from vkus.license_store import LICENSE_STORE_URL, LICENSE_STORE_USER_AGENT
 
 root = tk.Tk()

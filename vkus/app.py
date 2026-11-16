@@ -383,6 +383,7 @@ class VkusApp:
             top.pack_propagate(False)
             tk.Label(top, text='VKUS STORE  /  ЛИЦЕНЗИИ', bg='#07162f', fg='#d9a0ff',
                      font=('DejaVu Sans', 11, 'bold')).pack(side='left', padx=18, pady=12)
+            page.pack(fill='both', expand=True)
             browser_host = tk.Frame(page, bg='#030817', bd=0, highlightthickness=0)
             browser_host.pack(fill='both', expand=True)
             try:

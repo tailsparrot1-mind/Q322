@@ -1,3 +1,4 @@
 selenium>=4.20
 Pillow>=10.0
 keyring>=25.2
+tkwry>=0.1.9

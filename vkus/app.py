@@ -387,6 +387,7 @@ class VkusApp:
             browser_host.pack(fill='both', expand=True)
             try:
                 from tkwry import WebView
+                self.root.update_idletasks()
                 self.license_store_webview = WebView(
                     browser_host,
                     url='https://id-preview--78bbce34-69ac-42ab-9e42-f528ea437805.lovable.app',
@@ -394,18 +395,17 @@ class VkusApp:
                     open_external=False,
                     user_agent='VkusDesktop/3.28',
                 )
-                self.license_store_webview.pack(fill='both', expand=True)
                 self.license_store_webview.when_failed(
                     lambda exc: self.root.after(
                         0, lambda: messagebox.showerror(
                             'Vkus Store',
-                            'Не удалось открыть витрину внутри Vkus. Проверьте подключение и установку WebView2/WebKitGTK.\\n\\n'
+                            'Не удалось открыть витрину внутри Vkus. Проверьте подключение и установку WebView2/WebKitGTK.\n\n'
                             + str(exc), parent=self.root))
                 )
             except Exception as exc:
                 tk.Label(browser_host,
-                         text='Встроенный браузер не установлен.\\n'
-                              'Установите зависимости Vkus и перезапустите приложение.\\n\\n'
+                         text='Встроенный браузер не установлен.\n'
+                              'Установите зависимости Vkus и перезапустите приложение.\n\n'
                               + str(exc),
                          bg='#030817', fg='#ff9ba9', justify='center',
                          font=('DejaVu Sans', 11)).pack(expand=True)
@@ -1447,7 +1447,7 @@ class VkusApp:
         self.results_count.config(text='Идёт поиск… ' + ('КОММЕНТАРИИ' if mode=='comments' else 'ПОСТЫ'))
         self._render_results([], status='ИДЁТ ПОИСК…')
         if hasattr(self, 'log'):
-            self.log.insert('end', f'[{datetime.now():%H:%M:%S}] VK поиск: запрос={q or "—"}, регион={region}, город={city}…\\n')
+            self.log.insert('end', f'[{datetime.now():%H:%M:%S}] VK поиск: запрос={q or "—"}, регион={region}, город={city}…\n')
             self.log.see('end')
 
         threading.Thread(
@@ -1487,7 +1487,7 @@ class VkusApp:
         self.results_count.config(text=f'{"Комментарии" if mode=="comments" else "Посты"}: {len(self.search_results)}')
         self._render_results(self.search_results)
         if hasattr(self, 'log'):
-            self.log.insert('end', f'[{datetime.now():%H:%M:%S}] VK поиск завершён: результатов={len(self.search_results)}\\n')
+            self.log.insert('end', f'[{datetime.now():%H:%M:%S}] VK поиск завершён: результатов={len(self.search_results)}\n')
             self.log.see('end')
 
     def _search_failed(self, detail, generation=None):
@@ -1649,12 +1649,12 @@ class VkusApp:
         profile_url = contact.get('profile_url', '')
         if not profile_url:
             self.log.insert('end',
-                f'[{datetime.now():%H:%M:%S}] Сообщение не отправлено: у контакта нет ссылки на профиль VK.\\n')
+                f'[{datetime.now():%H:%M:%S}] Сообщение не отправлено: у контакта нет ссылки на профиль VK.\n')
             self.log.see('end')
             return
 
         self.log.insert('end',
-            f'[{datetime.now():%H:%M:%S}] Отправка сообщения через VK/Selenium…\\n')
+            f'[{datetime.now():%H:%M:%S}] Отправка сообщения через VK/Selenium…\n')
         self.log.see('end')
         self._last_popup_text = text_value
         self.popup_entry.delete(0, 'end')
@@ -1794,6 +1794,12 @@ class VkusApp:
         except Exception:
             pass
         self.browser.stop()
+        try:
+            web = getattr(self, 'license_store_webview', None)
+            if web is not None:
+                web.destroy()
+        except Exception:
+            pass
         self.root.destroy()
 
     def run(self):

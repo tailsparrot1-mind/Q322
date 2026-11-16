@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 sudo apt-get update
-sudo apt-get install -y python3 python3-venv python3-tk firefox-esr
+sudo apt-get install -y python3 python3-venv python3-tk firefox-esr \
+  libwebkit2gtk-4.1-dev libgtk-3-dev libglib2.0-dev rustc cargo
 # Optional fingerprint stack. If hardware/driver is unsupported, the app simply disables fingerprint login.
 sudo apt-get install -y fprintd libfprint-2-2 || true
 python3 -m venv .venv

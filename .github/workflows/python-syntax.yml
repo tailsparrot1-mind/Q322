@@ -1,4 +1,4 @@
-name: Python syntax check
+name: Python syntax check and source package
 
 on:
   push:
@@ -15,3 +15,10 @@ jobs:
           python-version: "3.12"
       - name: Compile application and tests
         run: python -m compileall -q main.py vkus tests
+      - name: Package current Vkus source
+        run: zip -r Vkus-Q322-embedded-board.zip main.py install.sh run.sh requirements.txt README.md vkus data tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vkus-Q322-embedded-board
+          path: Vkus-Q322-embedded-board.zip
+          if-no-files-found: error

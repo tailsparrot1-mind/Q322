@@ -10,6 +10,7 @@ from vkus.checks import build_checks
 from vkus.check_runner import CheckRunner, CheckResult
 from vkus.storage import load_settings, save_settings, setup_logging
 from vkus.lock_screen import LockScreen
+from vkus.license_store import LICENSE_STORE_URL, LICENSE_STORE_USER_AGENT
 
 try:
     from PIL import Image, ImageTk, ImageEnhance
@@ -391,10 +392,12 @@ class VkusApp:
                 self.root.update_idletasks()
                 self.license_store_webview = WebView(
                     browser_host,
-                    url='https://vkus-license-market.lovable.app',
+                    url=LICENSE_STORE_URL,
                     untrusted=True,
                     open_external=False,
-                    user_agent='VkusDesktop/3.28',
+                    user_agent=LICENSE_STORE_USER_AGENT,
+                    on_page_load=lambda event, loaded_url: self.logger.info(
+                        'Vkus Store page load: %s | %s', event, loaded_url),
                 )
                 self.license_store_webview.when_failed(
                     lambda exc: self.root.after(

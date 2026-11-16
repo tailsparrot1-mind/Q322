@@ -1,4 +1,4 @@
-name: Python syntax check, UI smoke test and source package
+name: Python syntax, UI smoke tests and source package
 
 on:
   push:
@@ -43,5 +43,30 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Vkus-Q322-marketplace-screenshots
+          path: artifacts/*.png
+          if-no-files-found: error
+
+  license-store-webview-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install WebKitGTK and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk xvfb build-essential pkg-config \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libglib2.0-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install embedded WebView
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install Pillow tkwry==0.1.9
+      - name: Launch Vkus Store inside Tk frame
+        run: xvfb-run -a .venv/bin/python .github/scripts/smoke_license_webview.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vkus-Q322-license-store-webview
           path: artifacts/*.png
           if-no-files-found: error

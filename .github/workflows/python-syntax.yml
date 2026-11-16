@@ -63,7 +63,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install Pillow selenium keyring tkwry==0.1.9
-      - name: Launch Vkus Store inside Tk frame
+      - name: Launch Vkus desktop app and verify embedded store
         run: xvfb-run -a .venv/bin/python .github/scripts/smoke_license_webview.py
       - uses: actions/upload-artifact@v4
         if: always()

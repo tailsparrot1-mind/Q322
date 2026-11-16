@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PIL import ImageGrab
+from PIL import ImageGrab, ImageStat
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
@@ -61,10 +61,10 @@ try:
     title = getattr(state, "title", "") or ""
     if urlparse(actual_url).hostname != urlparse(LICENSE_STORE_URL).hostname:
         raise RuntimeError(f"Vkus opened an unexpected destination: {actual_url}")
-    if "vkus" not in title.casefold():
-        raise RuntimeError(f"Published page title is not the Vkus storefront: {title!r}")
 
-    # Let the page finish painting before taking the real application screenshot.
+    # Let the page finish painting, then verify the actual WebView surface is
+    # visually populated. Linux get_state().title can remain empty under Xvfb,
+    # so the screenshot region is the reliable render check.
     end = time.monotonic() + 2
     while time.monotonic() < end:
         root.update()
@@ -72,18 +72,34 @@ try:
 
     out = Path("artifacts")
     out.mkdir(exist_ok=True)
-    ImageGrab.grab().save(out / "vkus-license-store-in-real-vkus.png")
+    screen = ImageGrab.grab()
+    host = web.master
+    x, y = host.winfo_rootx(), host.winfo_rooty()
+    width, height = host.winfo_width(), host.winfo_height()
+    page_image = screen.crop((x, y, x + width, y + height))
+    stats = ImageStat.Stat(page_image)
+    color_count = len(page_image.getcolors(maxcolors=1000000) or [])
+    render_variance = max(stats.stddev)
+    if render_variance < 10 or color_count < 100:
+        raise RuntimeError(
+            "WebView navigation finished but the embedded page surface is visually blank; "
+            f"stddev={render_variance:.2f}, unique_colors={color_count}, "
+            f"host_size={width}x{height}"
+        )
+    screen.save(out / "vkus-license-store-in-real-vkus.png")
+    page_image.save(out / "vkus-license-store-webview-area.png")
 
     report = {
         "result": "PASS",
         "test_scope": "real VkusApp launched under Xvfb; local lock bypassed only by CI harness",
         "destination": actual_url,
         "title": title,
+        "render_check": {"max_channel_stddev": render_variance, "unique_colors": color_count},
         "page_load_events": [
             {"event": event, "url": url}
             for event, url in app.license_store_page_events
         ],
-        "screenshot": "vkus-license-store-in-real-vkus.png",
+        "screenshots": ["vkus-license-store-in-real-vkus.png", "vkus-license-store-webview-area.png"],
     }
     (out / "vkus-license-store-webview-report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"

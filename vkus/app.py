@@ -262,6 +262,7 @@ class VkusApp:
             ('▤', 'Сообщения', self._show_messages),
             ('⇄', 'Биржа', self._show_exchange),
             ('▧', 'Доска объявлений', self._show_marketplace),
+            ('◆', 'Купить лицензию', self._show_license_store),
             ('ⓘ', 'О программе', self._show_about),
         ]
         self.nav_buttons = {}
@@ -364,6 +365,51 @@ class VkusApp:
             self.marketplace_page = open_cloud_marketplace_window(self.main)
         else:
             page.pack(fill='both', expand=True)
+
+    def _show_license_store(self):
+        """Open the Vkus license storefront in a native WebView inside this tab."""
+        self._restore_main_shell()
+        self._set_nav_active('Купить лицензию')
+        if self.right is not None:
+            self.right.grid_remove()
+        self.main.grid_configure(columnspan=2, padx=(10, 10))
+        self._clear_main()
+        page = getattr(self, 'license_store_page', None)
+        if page is None or not page.winfo_exists():
+            page = tk.Frame(self.main, bg='#030817', bd=0, highlightthickness=0)
+            self.license_store_page = page
+            top = tk.Frame(page, bg='#07162f', height=48)
+            top.pack(fill='x')
+            top.pack_propagate(False)
+            tk.Label(top, text='VKUS STORE  /  ЛИЦЕНЗИИ', bg='#07162f', fg='#d9a0ff',
+                     font=('DejaVu Sans', 11, 'bold')).pack(side='left', padx=18, pady=12)
+            browser_host = tk.Frame(page, bg='#030817', bd=0, highlightthickness=0)
+            browser_host.pack(fill='both', expand=True)
+            try:
+                from tkwry import WebView
+                self.license_store_webview = WebView(
+                    browser_host,
+                    url='https://id-preview--78bbce34-69ac-42ab-9e42-f528ea437805.lovable.app',
+                    untrusted=True,
+                    open_external=False,
+                    user_agent='VkusDesktop/3.28',
+                )
+                self.license_store_webview.pack(fill='both', expand=True)
+                self.license_store_webview.when_failed(
+                    lambda exc: self.root.after(
+                        0, lambda: messagebox.showerror(
+                            'Vkus Store',
+                            'Не удалось открыть витрину внутри Vkus. Проверьте подключение и установку WebView2/WebKitGTK.\\n\\n'
+                            + str(exc), parent=self.root))
+                )
+            except Exception as exc:
+                tk.Label(browser_host,
+                         text='Встроенный браузер не установлен.\\n'
+                              'Установите зависимости Vkus и перезапустите приложение.\\n\\n'
+                              + str(exc),
+                         bg='#030817', fg='#ff9ba9', justify='center',
+                         font=('DejaVu Sans', 11)).pack(expand=True)
+        page.pack(fill='both', expand=True)
 
     def _show_exchange(self):
         """Display Биржа as a full in-app tab, matching the approved full-screen reference."""

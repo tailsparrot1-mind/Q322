@@ -1,3 +1,10 @@
+import os
+import sys
+
+# Avoid blank WebKitGTK surfaces on Linux when the DMABUF renderer cannot initialize.
+if sys.platform.startswith('linux'):
+    os.environ.setdefault('WEBKIT_DISABLE_DMABUF_RENDERER', '1')
+
 import json
 import threading
 import tkinter as tk

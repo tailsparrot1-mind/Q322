@@ -367,6 +367,13 @@ class VkusApp:
         else:
             page.pack(fill='both', expand=True)
 
+    def _record_license_store_page_load(self, event, loaded_url):
+        event_name = getattr(event, 'name', str(event))
+        if not hasattr(self, 'license_store_page_events'):
+            self.license_store_page_events = []
+        self.license_store_page_events.append((event_name, loaded_url))
+        self.logger.info('Vkus Store page load: %s | %s', event_name, loaded_url)
+
     def _show_license_store(self):
         """Open the Vkus license storefront in a native WebView inside this tab."""
         self._restore_main_shell()
@@ -396,8 +403,7 @@ class VkusApp:
                     untrusted=True,
                     open_external=False,
                     user_agent=LICENSE_STORE_USER_AGENT,
-                    on_page_load=lambda event, loaded_url: self.logger.info(
-                        'Vkus Store page load: %s | %s', event, loaded_url),
+                    on_page_load=self._record_license_store_page_load,
                 )
                 self.license_store_webview.when_failed(
                     lambda exc: self.root.after(

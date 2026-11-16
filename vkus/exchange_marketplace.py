@@ -386,22 +386,14 @@ def open_marketplace_window(parent):
 
 
 def open_cloud_marketplace_window(parent):
-    """Open the shared cloud marketplace with account, listing and response actions."""
-    from tkinter import simpledialog
+    """Build the announcement board inside the existing Vkus content area."""
     from .cloud_marketplace import SupabaseMarketplaceClient, CloudMarketplaceError
 
     client = SupabaseMarketplaceClient()
-    win = tk.Toplevel(parent)
-    win.title("Vkus — Доска объявлений")
-    win.configure(bg="#050b1b")
-    parent.update_idletasks()
-    window_width = max(900, parent.winfo_width())
-    window_height = max(667, parent.winfo_height())
-    win.geometry(f"{window_width}x{window_height}+{parent.winfo_rootx()}+{parent.winfo_rooty()}")
-    win.minsize(900, 667)
-    win.transient(parent)
+    win = tk.Frame(parent, bg="#050b1b", bd=0, highlightthickness=0)
+    win.pack(fill="both", expand=True)
 
-    style = ttk.Style(win)
+    style = ttk.Style(parent.winfo_toplevel())
     try:
         style.theme_use("clam")
     except tk.TclError:
@@ -987,22 +979,18 @@ def open_cloud_marketplace_window(parent):
             if x1 <= nx <= x2 and y1 <= ny <= y2:
                 return key
         return None
-    def finish_gate_auth(dialog):
+    def finish_gate_auth(panel):
         update_account_label()
+        panel.destroy()
         gate.place_forget()
-        dialog.destroy()
         refresh()
+
     def show_role_auth(role):
-        dialog = tk.Toplevel(win)
-        dialog.title("Vkus — " + role)
-        dialog.configure(bg="#08152f")
-        dialog.transient(win)
-        dialog.grab_set()
-        dialog.resizable(False, False)
-        dialog.geometry("470x330")
-        panel = tk.Frame(dialog, bg="#08152f", padx=28, pady=24)
-        panel.pack(fill="both", expand=True)
         accent = "#d05aff" if role == "Соискатель" else "#23bfff"
+        panel = tk.Frame(gate, bg="#08152f", highlightbackground=accent,
+                         highlightthickness=2, padx=30, pady=24)
+        panel.place(relx=0.5, rely=0.5, anchor="center", width=500, height=390)
+        panel.lift()
         tk.Label(panel, text="VKUS  /  ДОСКА ОБЪЯВЛЕНИЙ", bg="#08152f", fg=accent,
                  font=("DejaVu Sans", 9, "bold")).pack(anchor="w")
         tk.Label(panel, text=("Регистрация соискателя" if role == "Соискатель" else "Регистрация рекламодателя"),
@@ -1019,16 +1007,18 @@ def open_cloud_marketplace_window(parent):
                                   fg="#f4f6ff", insertbackground="white", relief="flat", bd=0,
                                   highlightthickness=1, highlightbackground="#344d82")
         password_entry.pack(fill="x", ipady=9, pady=(4,16))
+
         def register_role():
             try:
                 client.sign_up(email_var.get(), password_var.get(), role=role)
                 if client.is_authenticated:
-                    finish_gate_auth(dialog)
+                    finish_gate_auth(panel)
                 else:
                     messagebox.showinfo("Подтверждение email",
-                        "Аккаунт создан. Подтвердите email по ссылке из письма, затем войдите.", parent=dialog)
+                        "Аккаунт создан. Подтвердите email по ссылке из письма, затем войдите.", parent=panel)
             except (CloudMarketplaceError, ValueError) as exc:
                 notify_error(exc)
+
         def login_role():
             try:
                 client.sign_in(email_var.get(), password_var.get())
@@ -1037,11 +1027,12 @@ def open_cloud_marketplace_window(parent):
                     client.set_marketplace_role(role)
                 elif saved_role != role:
                     messagebox.showinfo("Роль аккаунта",
-                        f"У аккаунта уже сохранена роль: {saved_role}. Выберите соответствующую карточку.", parent=dialog)
+                        f"У аккаунта уже сохранена роль: {saved_role}. Выберите соответствующую карточку.", parent=panel)
                     return
-                finish_gate_auth(dialog)
+                finish_gate_auth(panel)
             except (CloudMarketplaceError, ValueError) as exc:
                 notify_error(exc)
+
         tk.Button(panel, text="ЗАРЕГИСТРИРОВАТЬСЯ", command=register_role,
                   bg="#7136b9" if role == "Соискатель" else "#087eb7", fg="white",
                   activebackground=accent, relief="flat", bd=0, pady=10,
@@ -1049,6 +1040,9 @@ def open_cloud_marketplace_window(parent):
         tk.Button(panel, text="УЖЕ ЕСТЬ АККАУНТ · ВОЙТИ", command=login_role,
                   bg="#142b4c", fg="#d4f7ff", activebackground="#24539b",
                   relief="flat", bd=0, pady=8, font=("DejaVu Sans", 8, "bold")).pack(fill="x", pady=(8,0))
+        tk.Button(panel, text="← НАЗАД К ВЫБОРУ РОЛИ", command=panel.destroy,
+                  bg="#0b1c38", fg="#a8c8ff", activebackground="#17345d",
+                  relief="flat", bd=0, pady=7, font=("DejaVu Sans", 8, "bold")).pack(fill="x", pady=(8,0))
         email_entry.focus_set()
     def handle_role_gate_click(event):
         key = role_at_canvas_point(event.x, event.y)
@@ -1074,5 +1068,4 @@ def open_cloud_marketplace_window(parent):
     for variable in (query_var, kind_var, category_var, city_var):
         variable.trace_add("write", refresh)
     refresh()
-    win.bind("<Escape>", lambda _event: win.destroy())
     return win

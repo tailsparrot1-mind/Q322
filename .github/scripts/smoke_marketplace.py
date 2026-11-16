@@ -1,5 +1,9 @@
 from pathlib import Path
+import sys
 import tkinter as tk
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 
 from PIL import Image, ImageGrab
 
@@ -33,7 +37,7 @@ canvas = app.marketplace_page._marketplace_gate_canvas
 canvas.update_idletasks()
 gate = canvas.master
 source = Image.open(
-    Path(__file__).resolve().parents[2] / "vkus" / "assets" / "marketplace_role_gate.png"
+    ROOT / "vkus" / "assets" / "marketplace_role_gate.png"
 )
 cw, ch = canvas.winfo_width(), canvas.winfo_height()
 scale = min(cw / source.width, ch / source.height)

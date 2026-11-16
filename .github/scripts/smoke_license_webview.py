@@ -10,6 +10,7 @@ from PIL import ImageGrab
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
+import vkus.app as vkus_app_module
 from vkus.app import VkusApp
 from vkus.license_store import LICENSE_STORE_URL
 
@@ -17,6 +18,7 @@ from vkus.license_store import LICENSE_STORE_URL
 app = None
 errors = []
 probe = {"pending": False, "value": None, "error": None}
+vkus_app_module.messagebox.showerror = lambda title, message, parent=None: errors.append(f"{title}: {message}")
 
 try:
     # Launch the real Vkus desktop application, then unlock only inside this

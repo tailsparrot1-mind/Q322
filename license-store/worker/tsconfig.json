@@ -4,10 +4,19 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "strict": true,
-    "lib": ["ES2022", "WebWorker"],
-    "types": ["@cloudflare/workers-types"],
-    "noEmit": true,
-    "skipLibCheck": true
+    "lib": [
+      "ES2022",
+      "WebWorker"
+    ],
+    "types": [
+      "@cloudflare/workers-types"
+    ],
+    "noEmit": false,
+    "skipLibCheck": true,
+    "rootDir": "src",
+    "outDir": "dist"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

@@ -12,8 +12,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply vkus-license-store --remote"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20261118.0",
+    "@cloudflare/workers-types": "^5.20261117.1",
     "typescript": "^5.9.3",
-    "wrangler": "^4.45.0"
+    "wrangler": "^4.164.0"
   }
 }

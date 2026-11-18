@@ -170,7 +170,7 @@ Resend выбран как кандидат, потому что официал�
 
 ### CI и тесты — честный статус
 
-Первый запуск нового workflow `44366923371` завершился FAILURE на шаге setup-node, потому что в репозитории пока нет package-lock.json, а workflow пытался использовать npm cache. TypeScript и тесты в том запуске не стартовали. Конфигурация исправлена удалением npm cache; повторный запуск после исправления пока не подтверждён. Поэтому TypeScript/runtime-тесты по-прежнему НЕ ПРОВЕРЕНЫ. Ссылка на неуспешный запуск: https://github.com/tailsparrot1-mind/Q322/actions/runs/44366923371 .
+Первый запуск workflow `44366923371` завершился FAILURE на setup-node из-за npm cache без lockfile; это исправлено. Второй запуск `44366972455` прошёл setup-node, но завершился FAILURE на npm install: `@cloudflare/workers-types@^4.20261118.0` отсутствовала в npm. Зависимость исправлена на опубликованную `^5.20261117.1`, Wrangler — на опубликованную `^4.164.0`. После исправления GitHub Actions run `44367095809` завершился SUCCESS на commit `ab53dd812ffe9cb0f262eff724de7792fe3c2479`: npm install, TypeScript `tsc --noEmit`, TypeScript build, 3 signature unit tests (3/3) и Wrangler CLI check прошли. Это НЕ Worker runtime/integration test: D1 migration не применялась, `wrangler dev` и callback с D1 не запускались, Robokassa Sandbox/Resend не тестировались. Ссылки: https://github.com/tailsparrot1-mind/Q322/actions/runs/44366923371 ; https://github.com/tailsparrot1-mind/Q322/actions/runs/44366972455 ; https://github.com/tailsparrot1-mind/Q322/actions/runs/44367095809 .
 
 ### Текущий статус семи обязательных пунктов
 

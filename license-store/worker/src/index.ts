@@ -8,6 +8,7 @@ interface Env {
   ROBOKASSA_MERCHANT_LOGIN?: string;
   ROBOKASSA_PASSWORD_1?: string;
   ROBOKASSA_PASSWORD_2?: string;
+  LICENSE_ENCRYPTION_KEY?: string;
 }
 
 type Plan = {
@@ -40,6 +41,18 @@ function safeEqual(a: string, b: string): boolean {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
+}
+
+async function encryptLicense(value: string, secret: string): Promise<string> {
+  const raw = Uint8Array.from(atob(secret), c => c.charCodeAt(0));
+  if (raw.length !== 32) throw new Error("LICENSE_ENCRYPTION_KEY must be base64-encoded 32 bytes");
+  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(value)));
+  const packed = new Uint8Array(iv.length + ciphertext.length);
+  packed.set(iv, 0);
+  packed.set(ciphertext, iv.length);
+  return btoa(String.fromCharCode(...packed));
 }
 
 async function sha256(value: string): Promise<string> {
@@ -104,7 +117,7 @@ async function createOrder(request: Request, env: Env): Promise<Response> {
 }
 
 async function robokassaResult(request: Request, env: Env): Promise<Response> {
-  if (!env.ROBOKASSA_PASSWORD_2) return text("CONFIG_ERROR", 503);
+  if (!env.ROBOKASSA_PASSWORD_2 || !env.LICENSE_ENCRYPTION_KEY) return text("CONFIG_ERROR", 503);
   const raw = await request.text();
   const form = new URLSearchParams(raw);
   const outSum = formValue(form, "OutSum");
@@ -125,6 +138,7 @@ async function robokassaResult(request: Request, env: Env): Promise<Response> {
 
   const licenseKey = makeLicenseKey();
   const keyHash = await sha256(licenseKey);
+  const encryptedKey = await encryptLicense(licenseKey, env.LICENSE_ENCRYPTION_KEY);
   const licenseId = crypto.randomUUID();
   const plan = await env.DB.prepare("SELECT duration_days FROM plans WHERE id=(SELECT plan_id FROM orders WHERE id=?)").bind(orderId).first<{duration_days:number|null}>();
   const expiresAt = plan?.duration_days ? new Date(Date.now() + plan.duration_days * 86400000).toISOString() : null;
@@ -133,8 +147,8 @@ async function robokassaResult(request: Request, env: Env): Promise<Response> {
     await env.DB.batch([
       env.DB.prepare("INSERT INTO payment_events (order_id,provider,event_key,payload_sha256) VALUES (?,'robokassa',?,?)").bind(orderId,eventKey,eventHash),
       env.DB.prepare("UPDATE orders SET status='paid',paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(orderId),
-      env.DB.prepare("INSERT INTO licenses (id,order_id,plan_id,key_hash,key_hint,status,expires_at) SELECT ?,id,plan_id,?,?, 'active',? FROM orders WHERE id=?")
-        .bind(licenseId,keyHash,licenseKey.slice(-5),expiresAt,orderId),
+      env.DB.prepare("INSERT INTO licenses (id,order_id,plan_id,key_hash,encrypted_key,key_hint,status,expires_at) SELECT ?,id,plan_id,?,?,?, 'active',? FROM orders WHERE id=?")
+        .bind(licenseId,keyHash,encryptedKey,licenseKey.slice(-5),expiresAt,orderId),
     ]);
   } catch {
     return text("TEMPORARY_DB_ERROR", 503);

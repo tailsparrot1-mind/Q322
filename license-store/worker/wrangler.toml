@@ -10,6 +10,7 @@ run_worker_first = ["/api/*", "/robokassa/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "vkus-license-store"
+migrations_dir = "migrations"
 database_id = "REPLACE_AFTER_D1_CREATE"
 
 [vars]

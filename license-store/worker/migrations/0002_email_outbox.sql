@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','sending','sent','failed')),
   attempts INTEGER NOT NULL DEFAULT 0,
   next_attempt_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  locked_until TEXT,
   last_error TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   sent_at TEXT

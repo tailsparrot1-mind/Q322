@@ -9,6 +9,8 @@ interface Env {
   ROBOKASSA_PASSWORD_1?: string;
   ROBOKASSA_PASSWORD_2?: string;
   LICENSE_ENCRYPTION_KEY?: string;
+  RESEND_API_KEY?: string;
+  LICENSE_MAIL_FROM?: string;
 }
 
 type Plan = {
@@ -61,13 +63,48 @@ async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
-async function signature(value: string, algorithm: string): Promise<string> {
+export async function signature(value: string, algorithm: string): Promise<string> {
   const normalized = algorithm.trim().toUpperCase().replace("_", "-");
   if (!["SHA-256", "SHA-384", "SHA-512"].includes(normalized)) {
     throw new Error("Unsupported Robokassa hash algorithm");
   }
   const digest = await crypto.subtle.digest(normalized, new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+async function decryptLicense(value: string, secret: string): Promise<string> {
+  const raw = Uint8Array.from(atob(secret), c => c.charCodeAt(0));
+  if (raw.length !== 32) throw new Error("LICENSE_ENCRYPTION_KEY must be base64-encoded 32 bytes");
+  const packed = Uint8Array.from(atob(value), c => c.charCodeAt(0));
+  if (packed.length < 29) throw new Error("Invalid encrypted license payload");
+  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: packed.slice(0, 12) }, key, packed.slice(12));
+  return new TextDecoder().decode(plain);
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>\"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#39;" }[ch] || ch));
+}
+
+async function deliverPendingEmails(env: Env, limit = 10): Promise<void> {
+  if (!env.RESEND_API_KEY || !env.LICENSE_MAIL_FROM || !env.LICENSE_ENCRYPTION_KEY) return;
+  const { results } = await env.DB.prepare("SELECT o.id AS order_id,o.email,p.title AS plan_title,l.encrypted_key,l.id AS license_id FROM email_outbox e JOIN orders o ON o.id=e.order_id JOIN licenses l ON l.id=e.license_id JOIN plans p ON p.id=l.plan_id WHERE e.status='pending' AND e.next_attempt_at<=CURRENT_TIMESTAMP ORDER BY e.created_at LIMIT ?").bind(limit).all<{order_id:string;email:string;plan_title:string;encrypted_key:string;license_id:string}>();
+  for (const row of results) {
+    const claimed = await env.DB.prepare("UPDATE email_outbox SET status='sending',attempts=attempts+1 WHERE order_id=? AND status='pending'").bind(row.order_id).run();
+    if (!claimed.meta.changes) continue;
+    try {
+      const license = await decryptLicense(row.encrypted_key, env.LICENSE_ENCRYPTION_KEY);
+      const html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Лицензия Vkus</h2><p>Тариф: <b>' + escapeHtml(row.plan_title) + '</b></p><p>Ваш ключ лицензии:</p><div style="padding:16px;background:#101a32;color:#fff;font-size:20px;letter-spacing:1px;border-radius:8px">' + escapeHtml(license) + '</div><p>Введите ключ в приложении Vkus. Сохраните это письмо.</p><p style="color:#667085">Заказ: ' + escapeHtml(row.order_id) + '</p></div>';
+      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.LICENSE_MAIL_FROM, to: [row.email], subject: "Ваш ключ лицензии Vkus", html }) });
+      if (!response.ok) throw new Error("Resend HTTP " + response.status);
+      await env.DB.prepare("UPDATE email_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE order_id=?").bind(row.order_id).run();
+      await env.DB.prepare("UPDATE licenses SET delivery_status='sent' WHERE id=?").bind(row.license_id).run();
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 240) : "mail_delivery_failed";
+      await env.DB.prepare("UPDATE email_outbox SET status=CASE WHEN attempts>=8 THEN 'failed' ELSE 'pending' END,next_attempt_at=datetime('now', '+' || MIN(3600, (30 * (1 << MIN(attempts,7)))) || ' seconds'),last_error=? WHERE order_id=?").bind(message,row.order_id).run();
+      await env.DB.prepare("UPDATE licenses SET delivery_status='failed' WHERE id=? AND (SELECT status FROM email_outbox WHERE order_id=?)='failed'").bind(row.license_id,row.order_id).run();
+    }
+  }
 }
 
 function makeLicenseKey(): string {
@@ -148,13 +185,12 @@ async function robokassaResult(request: Request, env: Env): Promise<Response> {
     await env.DB.batch([
       env.DB.prepare("INSERT INTO payment_events (order_id,provider,event_key,payload_sha256) VALUES (?,'robokassa',?,?)").bind(orderId,eventKey,eventHash),
       env.DB.prepare("UPDATE orders SET status='paid',paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(orderId),
-      env.DB.prepare("INSERT INTO licenses (id,order_id,plan_id,key_hash,encrypted_key,key_hint,status,expires_at) SELECT ?,id,plan_id,?,?,?, 'active',? FROM orders WHERE id=?")
-        .bind(licenseId,keyHash,encryptedKey,licenseKey.slice(-5),expiresAt,orderId),
+      env.DB.prepare("INSERT INTO licenses (id,order_id,plan_id,key_hash,encrypted_key,key_hint,status,expires_at) SELECT ?,id,plan_id,?,?,?, 'active',? FROM orders WHERE id=?").bind(licenseId,keyHash,encryptedKey,licenseKey.slice(-5),expiresAt,orderId),
+      env.DB.prepare("INSERT INTO email_outbox (order_id,license_id,status) VALUES (?,?,'pending')").bind(orderId,licenseId),
     ]);
   } catch {
     return text("TEMPORARY_DB_ERROR", 503);
   }
-  // License delivery is intentionally not attempted until a mail provider is configured.
   return text(`OK${invId}`);
 }
 
@@ -173,6 +209,7 @@ async function activate(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) { ctx.waitUntil(deliverPendingEmails(env)); },
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(request) });

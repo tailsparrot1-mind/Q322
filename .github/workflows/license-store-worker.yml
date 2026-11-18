@@ -37,7 +37,8 @@ jobs:
             sleep 2
           done
           if [ -z "$health" ]; then cat /tmp/vkus-worker.log; exit 1; fi
-          echo "$health" | grep -q 'vkus-license-store'
+          echo "Health response: $health"
+          if ! echo "$health" | grep -q 'vkus-license-store'; then cat /tmp/vkus-worker.log; exit 1; fi
           plans="$(curl -sS http://127.0.0.1:8787/api/plans)"
           echo "$plans" | grep -q '"plans":\\[\\]'
       - run: npx wrangler --version

@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS licenses (
   order_id TEXT NOT NULL UNIQUE REFERENCES orders(id),
   plan_id TEXT NOT NULL REFERENCES plans(id),
   key_hash TEXT NOT NULL UNIQUE,
+  encrypted_key TEXT NOT NULL,
   key_hint TEXT NOT NULL,
+  delivery_status TEXT NOT NULL DEFAULT 'pending' CHECK (delivery_status IN ('pending', 'sent', 'failed')),
   status TEXT NOT NULL CHECK (status IN ('active', 'revoked', 'expired')),
   expires_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

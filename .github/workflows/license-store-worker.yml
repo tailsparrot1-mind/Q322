@@ -1,0 +1,29 @@
+name: License Store Worker checks
+on:
+  push:
+    paths:
+      - "license-store/worker/**"
+      - "license-store/site/**"
+      - ".github/workflows/license-store-worker.yml"
+  pull_request:
+    paths:
+      - "license-store/worker/**"
+      - "license-store/site/**"
+      - ".github/workflows/license-store-worker.yml"
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: license-store/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: license-store/worker/package-lock.json
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx wrangler --version

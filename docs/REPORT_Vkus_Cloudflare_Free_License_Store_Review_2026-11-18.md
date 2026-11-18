@@ -177,7 +177,7 @@ Resend выбран как кандидат, потому что официал�
 1. Перенос прежнего дизайна магазина — НЕ ВЫПОЛНЕН. Создан временный Vkus-стилизованный frontend, но точное совпадение с прежней опубликованной витриной не подтверждено.
 2. Каталог действующих тарифов — НЕ ПЕРЕНЕСЁН. Frontend читает D1, но фактические названия, цены и описания тарифов ещё не сверены с действующей витриной; таблица plans не заполнена.
 3. Email-выдача ключей — КОД РЕАЛИЗОВАН ЧАСТИЧНО, НЕ ПРОВЕРЕНА. Нужны Resend account, verified sender domain, API key, тест успешной доставки, отказа и повторной отправки.
-4. TypeScript typecheck и build — PASS в CI; 3 подпись-unit-теста — PASS. Worker runtime/integration tests с D1, callback, повторными уведомлениями и email — НЕ ВЫПОЛНЕНЫ.
+4. TypeScript typecheck/build — PASS; signature unit tests — PASS 3/3; D1 migrations — PASS local. Worker local HTTP smoke — FAILURE/не запустился на 127.0.0.1:8787, причина ещё требует диагностики. Callback/integration tests, retry/idempotency и email runtime — НЕ ПРОВЕРЕНЫ.
 5. Robokassa Sandbox — НЕ ПОДКЛЮЧЕНА. Нет подтверждённых тестовых credentials и реального sandbox callback.
 6. Cloudflare Worker и D1 — НЕ РАЗВЁРНУТЫ. Нет Cloudflare account, database_id и secrets.
 7. Проверка WebView в Kali — НЕ ВЫПОЛНЕНА. Новый storefront ещё не развёрнут; CI/Xvfb не заменяет целевой запуск в Kali/VMware.
@@ -197,3 +197,6 @@ PR остаётся Draft и не готов к merge/production.
 
 
 CI подтверждён на commit `ab53dd812ffe9cb0f262eff724de7792fe3c2479`; последующие изменения отчёта/PR не меняют код Worker. Полный runtime test остаётся отдельным блокером.
+
+
+Дополнительная проверка: run `44367314105` — PASS (compile/unit tests); run `44367322769` — FAILURE на local runtime smoke после успешных typecheck, unit tests и применения обеих D1 migrations. Ссылка: https://github.com/tailsparrot1-mind/Q322/actions/runs/44367322769 . В workflow добавлена расширенная диагностика старта Worker; ожидается повторный запуск.

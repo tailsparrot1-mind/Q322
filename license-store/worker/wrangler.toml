@@ -1,0 +1,24 @@
+name = "vkus-license-store"
+main = "src/index.ts"
+compatibility_date = "2026-11-18"
+
+[assets]
+directory = "../site"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/robokassa/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vkus-license-store"
+database_id = "REPLACE_AFTER_D1_CREATE"
+
+[vars]
+PUBLIC_BASE_URL = "https://REPLACE_WITH_WORKERS_DEV_HOST"
+ROBOKASSA_URL = "https://auth.robokassa.ru/Merchant/Index.aspx"
+ROBOKASSA_HASH_ALGORITHM = "SHA-256"
+CURRENCY = "RUB"
+
+# Secrets are configured separately with:
+# wrangler secret put ROBOKASSA_MERCHANT_LOGIN
+# wrangler secret put ROBOKASSA_PASSWORD_1
+# wrangler secret put ROBOKASSA_PASSWORD_2

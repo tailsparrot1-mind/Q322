@@ -229,3 +229,12 @@ CI подтверждён на commit `ab53dd812ffe9cb0f262eff724de7792fe3c2479`
 4. Оплата, email, Cloudflare deploy, Sandbox и Kali WebView — прежние блокеры сохраняются.
 
 Дополнительно проверен CI run `44367568013`: typecheck, unit tests и обе локальные D1 migrations прошли; шаг Worker local runtime smoke завершился FAILURE. Следовательно runtime/integration остаётся НЕ ПРОВЕРЕН. PR #1 остаётся Draft; реальные платежи не включать.
+
+
+### Диагностика local Worker smoke — 19.11.2026
+
+Повторно прочитаны полные логи CI run `44367568013`. Они уточняют прежний диагноз:
+- `wrangler dev --local` действительно поднял Worker;
+- HTTP `GET /api/health` вернул `{"ok":true,"service":"vkus-license-store","payments_configured":false}`;
+- шаг завершился на последующей shell-проверке ответа `/api/plans`. В workflow использовался grep с избыточным экранированием квадратных скобок, поэтому проверка пустого массива могла давать ложный FAILURE. Сам ответ /api/plans в прежнем логе не печатался, поэтому его точное содержимое по этому запуску не подтверждено.
+Workflow исправлен: теперь он печатает ответ /api/plans и проверяет фиксированную строку `"plans":[]` через `grep -Fq`. Commit: `2f2208eb8c7477161d6d82b2f53cc9dfd939b8e2`. Новый CI run после этого исправления ещё не подтверждён; Worker runtime smoke пока считать НЕ ПРОВЕРЕННЫМ до успешного повторного запуска.

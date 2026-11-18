@@ -88,20 +88,20 @@ function escapeHtml(value: string): string {
 
 async function deliverPendingEmails(env: Env, limit = 10): Promise<void> {
   if (!env.RESEND_API_KEY || !env.LICENSE_MAIL_FROM || !env.LICENSE_ENCRYPTION_KEY) return;
-  const { results } = await env.DB.prepare("SELECT o.id AS order_id,o.email,p.title AS plan_title,l.encrypted_key,l.id AS license_id FROM email_outbox e JOIN orders o ON o.id=e.order_id JOIN licenses l ON l.id=e.license_id JOIN plans p ON p.id=l.plan_id WHERE e.status='pending' AND e.next_attempt_at<=CURRENT_TIMESTAMP ORDER BY e.created_at LIMIT ?").bind(limit).all<{order_id:string;email:string;plan_title:string;encrypted_key:string;license_id:string}>();
+  const { results } = await env.DB.prepare("SELECT o.id AS order_id,o.email,p.title AS plan_title,l.encrypted_key,l.id AS license_id FROM email_outbox e JOIN orders o ON o.id=e.order_id JOIN licenses l ON l.id=e.license_id JOIN plans p ON p.id=l.plan_id WHERE ((e.status='pending' AND e.next_attempt_at<=CURRENT_TIMESTAMP) OR (e.status='sending' AND e.locked_until<CURRENT_TIMESTAMP)) ORDER BY e.created_at LIMIT ?").bind(limit).all<{order_id:string;email:string;plan_title:string;encrypted_key:string;license_id:string}>();
   for (const row of results) {
-    const claimed = await env.DB.prepare("UPDATE email_outbox SET status='sending',attempts=attempts+1 WHERE order_id=? AND status='pending'").bind(row.order_id).run();
+    const claimed = await env.DB.prepare("UPDATE email_outbox SET status='sending',attempts=attempts+1,locked_until=datetime('now','+5 minutes') WHERE order_id=? AND (status='pending' OR (status='sending' AND locked_until<CURRENT_TIMESTAMP))").bind(row.order_id).run();
     if (!claimed.meta.changes) continue;
     try {
       const license = await decryptLicense(row.encrypted_key, env.LICENSE_ENCRYPTION_KEY);
       const html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#172033"><h2>Лицензия Vkus</h2><p>Тариф: <b>' + escapeHtml(row.plan_title) + '</b></p><p>Ваш ключ лицензии:</p><div style="padding:16px;background:#101a32;color:#fff;font-size:20px;letter-spacing:1px;border-radius:8px">' + escapeHtml(license) + '</div><p>Введите ключ в приложении Vkus. Сохраните это письмо.</p><p style="color:#667085">Заказ: ' + escapeHtml(row.order_id) + '</p></div>';
       const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.LICENSE_MAIL_FROM, to: [row.email], subject: "Ваш ключ лицензии Vkus", html }) });
       if (!response.ok) throw new Error("Resend HTTP " + response.status);
-      await env.DB.prepare("UPDATE email_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE order_id=?").bind(row.order_id).run();
+      await env.DB.prepare("UPDATE email_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,last_error=NULL,locked_until=NULL WHERE order_id=?").bind(row.order_id).run();
       await env.DB.prepare("UPDATE licenses SET delivery_status='sent' WHERE id=?").bind(row.license_id).run();
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 240) : "mail_delivery_failed";
-      await env.DB.prepare("UPDATE email_outbox SET status=CASE WHEN attempts>=8 THEN 'failed' ELSE 'pending' END,next_attempt_at=datetime('now', '+' || MIN(3600, (30 * (1 << MIN(attempts,7)))) || ' seconds'),last_error=? WHERE order_id=?").bind(message,row.order_id).run();
+      await env.DB.prepare("UPDATE email_outbox SET status=CASE WHEN attempts>=8 THEN 'failed' ELSE 'pending' END,next_attempt_at=datetime('now', '+' || MIN(3600, (30 * (1 << MIN(attempts,7)))) || ' seconds'),locked_until=NULL,last_error=? WHERE order_id=?").bind(message,row.order_id).run();
       await env.DB.prepare("UPDATE licenses SET delivery_status='failed' WHERE id=? AND (SELECT status FROM email_outbox WHERE order_id=?)='failed'").bind(row.license_id,row.order_id).run();
     }
   }

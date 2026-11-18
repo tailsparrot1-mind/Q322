@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate:local": "wrangler d1 execute vkus-license-store --local --file=migrations/0001_initial.sql",
+    "db:migrate:local": "wrangler d1 migrations apply vkus-license-store --local",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
-    "test": "npm run build && node --test tests/*.test.mjs"
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "db:migrate:remote": "wrangler d1 migrations apply vkus-license-store --remote"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20261118.0",

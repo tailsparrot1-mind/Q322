@@ -61,12 +61,13 @@ async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
-async function signature(value: string): Promise<string> {
-  if (crypto.subtle && ["SHA-256", "SHA-384", "SHA-512"].includes("SHA-256")) {
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-    return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+async function signature(value: string, algorithm: string): Promise<string> {
+  const normalized = algorithm.trim().toUpperCase().replace("_", "-");
+  if (!["SHA-256", "SHA-384", "SHA-512"].includes(normalized)) {
+    throw new Error("Unsupported Robokassa hash algorithm");
   }
-  throw new Error("SHA-256 WebCrypto unavailable");
+  const digest = await crypto.subtle.digest(normalized, new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 
 function makeLicenseKey(): string {
@@ -101,7 +102,7 @@ async function createOrder(request: Request, env: Env): Promise<Response> {
   await env.DB.prepare("INSERT INTO orders (id,plan_id,email,amount_minor,currency,status,robokassa_inv_id) VALUES (?,?,?,?,?,'pending',?)")
     .bind(orderId, plan.id, email, plan.amount_minor, plan.currency, invId).run();
 
-  const sign = await signature(`${env.ROBOKASSA_MERCHANT_LOGIN}:${amount}:${invId}:${env.ROBOKASSA_PASSWORD_1}`);
+  const sign = await signature(`${env.ROBOKASSA_MERCHANT_LOGIN}:${amount}:${invId}:${env.ROBOKASSA_PASSWORD_1}:Shp_order=${orderId}`, env.ROBOKASSA_HASH_ALGORITHM || "SHA-256");
   const url = new URL(env.ROBOKASSA_URL);
   url.searchParams.set("MerchantLogin", env.ROBOKASSA_MERCHANT_LOGIN);
   url.searchParams.set("OutSum", amount);
@@ -126,7 +127,7 @@ async function robokassaResult(request: Request, env: Env): Promise<Response> {
   const orderId = formValue(form, "Shp_order");
   if (!outSum || !invId || !supplied || !orderId) return text("BAD_REQUEST", 400);
 
-  const expected = await signature(`${outSum}:${invId}:${env.ROBOKASSA_PASSWORD_2}:Shp_order=${orderId}`);
+  const expected = await signature(`${outSum}:${invId}:${env.ROBOKASSA_PASSWORD_2}:Shp_order=${orderId}`, env.ROBOKASSA_HASH_ALGORITHM || "SHA-256");
   if (!safeEqual(supplied, expected)) return text("BAD_SIGNATURE", 403);
 
   const order = await env.DB.prepare("SELECT id,amount_minor,status,robokassa_inv_id FROM orders WHERE id=?").bind(orderId).first<{id:string;amount_minor:number;status:string;robokassa_inv_id:string}>();

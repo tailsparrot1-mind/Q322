@@ -123,3 +123,40 @@ Cloudflare Workers (workers.dev на старте)
 - Robokassa credentials/test shop: НЕ ПОДКЛЮЧЕНЫ.
 - Полный платёжный цикл: НЕ ПРОВЕРЕН.
 - Реальная оплата/выдача/активация/email: НЕ РАБОТАЮТ/НЕ ПОДТВЕРЖДЕНЫ.
+
+
+## Реализация — первый backend-каркас (18.11.2026)
+
+Создана отдельная ветка `feature/cloudflare-license-store-foundation` и Draft PR:
+https://github.com/tailsparrot1-mind/Q322/pull/1
+
+Добавлены файлы:
+- `license-store/worker/wrangler.toml` — конфигурация Worker, Static Assets и D1 binding; database_id и публичный адрес оставлены явными placeholders.
+- `license-store/worker/migrations/0001_initial.sql` — таблицы plans, orders, payment_events, licenses, activations.
+- `license-store/worker/src/index.ts` — базовые API health/plans/orders, создание платежа Robokassa, ResultURL, Success/Fail redirect и активация лицензии.
+- `license-store/worker/package.json`, `tsconfig.json`, `README.md`.
+
+Безопасность каркаса:
+- цена выбирается из таблицы активных планов, клиент не передаёт сумму;
+- SHA-256 подпись формируется на сервере;
+- ResultURL сверяет подпись, InvId, order_id и сумму;
+- повторный callback защищён уникальным event key и состоянием заказа;
+- ключ генерируется криптографически, в D1 хранится SHA-256 hash и AES-GCM ciphertext; шифровальный ключ должен задаваться отдельным Worker Secret;
+- Robokassa passwords и encryption key не записаны в репозиторий.
+
+Ограничения текущего каркаса:
+- Это начальная реализация, не прошедшая TypeScript/runtime/security tests; не развёртывать и не принимать реальные платежи.
+- Поддержана только конфигурация SHA-256; merchant cabinet должен быть настроен на тот же алгоритм. Если аккаунт использует другой алгоритм, код потребуется адаптировать.
+- Временный `IsTest=1` оставлен принудительно.
+- Не реализованы transactional email, безопасная выдача/получение покупателем ключа после оплаты, status polling, rate limiting, админское управление тарифами и политика лимитов устройств.
+- Каталог тарифов намеренно не заполнен: нужно перенести и сверить фактические тарифы исходной витрины, не подменять их историческими черновиками.
+- Storefront assets пока не добавлены. Перенос дизайна и удаление зависимости от старого URL не выполнены.
+- D1 ID, workers.dev URL, Cloudflare account, Robokassa secrets отсутствуют.
+
+Статус:
+- Исходники backend scaffold: СОЗДАНЫ В FEATURE BRANCH.
+- PR: СОЗДАН, DRAFT, НЕ СЛИТ.
+- Повторное чтение исходников и diff: требуется перед merge.
+- TypeScript typecheck, migration test, signature unit tests, Worker local runtime: НЕ ПРОВЕРЕНО.
+- Cloudflare deploy, D1 production, Robokassa sandbox, WebView on Kali: НЕ ПРОВЕРЕНО.
+- Реальные платежи: НЕ ГОТОВЫ.

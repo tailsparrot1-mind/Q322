@@ -30,10 +30,14 @@ jobs:
           npx wrangler dev --local --ip 127.0.0.1 --port 8787 > /tmp/vkus-worker.log 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          health=""
           for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8787/api/health > /tmp/vkus-health.json; then break; fi
+            health="$(curl -sS http://127.0.0.1:8787/api/health 2>/dev/null || true)"
+            if [ -n "$health" ]; then break; fi
             sleep 2
           done
-          grep -q 'vkus-license-store' /tmp/vkus-health.json
-          curl -fsS http://127.0.0.1:8787/api/plans | grep -q '"plans":\\[\\]'
+          if [ -z "$health" ]; then cat /tmp/vkus-worker.log; exit 1; fi
+          echo "$health" | grep -q 'vkus-license-store'
+          plans="$(curl -sS http://127.0.0.1:8787/api/plans)"
+          echo "$plans" | grep -q '"plans":\\[\\]'
       - run: npx wrangler --version

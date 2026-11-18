@@ -22,3 +22,6 @@ CURRENCY = "RUB"
 # wrangler secret put ROBOKASSA_MERCHANT_LOGIN
 # wrangler secret put ROBOKASSA_PASSWORD_1
 # wrangler secret put ROBOKASSA_PASSWORD_2
+
+[triggers]
+crons = ["* * * * *"]

@@ -1,31 +1,147 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071329"><title>Vkus — лицензии</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10072f">
+<title>Vkus — лицензии</title>
 <style>
-:root{color-scheme:dark;--bg:#050b18;--panel:rgba(9,25,52,.88);--line:rgba(60,133,255,.32);--cyan:#16d9ff;--violet:#a42cff;--text:#edf5ff;--muted:#91a9c9}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 18% 0%,#172c62 0,transparent 42%),radial-gradient(ellipse at 90% 90%,#27104b 0,transparent 40%),var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,Arial,sans-serif}
-main{width:min(1040px,calc(100% - 32px));margin:0 auto;padding:34px 0 56px}.top{display:flex;align-items:center;gap:14px;margin-bottom:38px}.logo{font-size:30px;font-weight:900;letter-spacing:-1.5px}.logo span{color:var(--violet)}.tag{color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase}
-.hero{padding:34px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(130deg,rgba(15,39,79,.92),rgba(12,15,37,.88));box-shadow:0 18px 70px #0008,inset 0 1px #ffffff12;position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-150px;top:-230px;background:#842cff55;filter:blur(65px);pointer-events:none}
-h1{font-size:clamp(28px,5vw,46px);line-height:1.08;margin:0 0 12px;max-width:700px}p{color:var(--muted);margin:0}.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
-.section{margin:32px 0 14px;font-size:19px}.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.plan{border:1px solid var(--line);border-radius:18px;padding:22px;background:var(--panel);box-shadow:0 12px 38px #0005;display:flex;flex-direction:column;min-height:230px}.plan h3{margin:0 0 8px;font-size:20px}.price{font-size:27px;font-weight:800;margin:18px 0 10px;color:#fff}.plan p{font-size:13px;flex:1}.button{border:0;border-radius:10px;padding:13px 16px;background:linear-gradient(100deg,#942aff,#176dff);color:white;font-weight:750;cursor:pointer}.button:disabled{opacity:.45;cursor:not-allowed}
-.panel{margin-top:22px;padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}label{display:block;font-size:13px;margin:0 0 8px}input{width:100%;background:#07162d;border:1px solid #214a7d;border-radius:10px;padding:13px;color:white;font:inherit;outline:none}input:focus{border-color:var(--cyan)}.row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}.notice{margin-top:14px;min-height:24px;font-size:13px;color:var(--cyan)}.empty{padding:24px;border:1px dashed var(--line);border-radius:16px;color:var(--muted)}footer{margin-top:30px;color:#647d9f;font-size:11px;text-align:center}
-@media(max-width:600px){main{width:min(100% - 22px,1040px);padding-top:20px}.hero{padding:24px 20px}.row{grid-template-columns:1fr}.button{width:100%}}
-</style></head>
-<body><main>
-<header class="top"><div class="logo"><span>V</span>kus</div><div><div class="tag">License Store</div><div style="font-size:12px;color:var(--muted)">Официальный магазин лицензий</div></div></header>
-<section class="hero"><div class="eyebrow">Vkus · инструмент поиска клиентов</div><h1>Откройте больше возможностей Vkus</h1><p>Выберите подходящий тариф и получите лицензионный ключ на электронную почту после подтверждения оплаты.</p></section>
-<h2 class="section">Доступные тарифы</h2><section id="plans" class="plans"><div class="empty">Загружаем каталог тарифов…</div></section>
-<section class="panel"><form id="checkout"><label for="email">Email для получения лицензии</label><div class="row"><input id="email" type="email" autocomplete="email" placeholder="name@example.com" required maxlength="254"><button class="button" id="pay" type="submit" disabled>Перейти к оплате</button></div><div id="notice" class="notice" role="status" aria-live="polite">Сначала выберите тариф.</div></form></section>
-<footer>Vkus License Store · Оплата подтверждается сервером Robokassa. Не закрывайте окно до возврата в приложение.</footer>
+:root{color-scheme:dark;--ink:#f5f2ff;--muted:#b8b1d0;--cyan:#04d9f4;--pink:#e64bd8;--purple:#9c55ff;--line:rgba(190,157,255,.23);--glass:rgba(31,23,77,.46)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100vh;background:#08051c;color:var(--ink);font:16px/1.55 Montserrat,Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:inherit;text-decoration:none}
+.page{min-height:100vh;overflow:hidden;background:radial-gradient(ellipse 58% 64% at 4% 30%,rgba(117,47,180,.62),transparent 72%),radial-gradient(ellipse 54% 72% at 100% 40%,rgba(0,117,174,.58),transparent 72%),radial-gradient(ellipse 70% 55% at 48% 100%,rgba(84,0,123,.36),transparent 70%),linear-gradient(115deg,#211044 0%,#0c092e 46%,#06365a 100%)}
+main{width:min(1160px,calc(100% - 48px));margin:0 auto;padding:12px 0 72px}
+.nav{height:60px;margin:0 auto;display:flex;align-items:center;gap:24px;padding:7px 12px 7px 22px;border:1px solid rgba(202,178,255,.28);border-radius:40px;background:rgba(43,31,91,.43);box-shadow:inset 0 1px 1px #fff2,0 10px 35px #06031d35;backdrop-filter:blur(18px);position:relative;z-index:2}
+.brand{display:flex;align-items:center;gap:11px;font-size:22px;font-weight:800;letter-spacing:-1px;white-space:nowrap}
+.brand-mark{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(12,14,52,.55);border:1px solid rgba(174,141,255,.12);font-size:31px;font-weight:900;line-height:1;color:#d95bff;text-shadow:0 0 14px #a832ff}
+.brand-mark span{background:linear-gradient(145deg,#09e5ff,#c64aff 72%);background-clip:text;-webkit-background-clip:text;color:transparent}
+.links{display:flex;align-items:center;justify-content:center;gap:clamp(15px,3vw,36px);flex:1;color:#b9b3d2;font-size:14px;white-space:nowrap}
+.links a:hover{color:#fff}
+.nav-cta,.primary{border:0;border-radius:28px;padding:13px 24px;color:#090b2d;background:linear-gradient(105deg,#36dafa 0%,#a66cff 54%,#ee56d5 100%);font:700 14px inherit;box-shadow:0 0 26px rgba(105,98,255,.42);cursor:pointer;white-space:nowrap}
+.nav-cta{padding:10px 20px;font-size:13px}
+.hero{min-height:590px;padding:118px 0 70px;max-width:1100px;position:relative}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:7px 16px;border:1px solid rgba(199,166,255,.3);border-radius:30px;background:rgba(35,22,79,.38);color:#bdb5d8;font-size:14px;box-shadow:inset 0 1px #fff1}
+.spark{font-size:18px;color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+h1{font-size:clamp(42px,6.2vw,68px);line-height:.99;letter-spacing:-2.6px;font-weight:850;margin:28px 0 25px;max-width:1080px}
+h1 span{display:block;color:var(--cyan);text-shadow:0 0 22px rgba(0,217,244,.12)}
+.lead{max-width:620px;color:#c1bad6;font-size:17px;line-height:1.65;margin:0}
+.actions{display:flex;align-items:center;gap:12px;margin-top:36px}
+.primary{padding:16px 28px;font-size:16px}
+.secondary{padding:14px 27px;border:1px solid rgba(190,157,255,.27);border-radius:28px;background:rgba(34,22,75,.4);color:#f1edff;font-size:15px;cursor:pointer;box-shadow:inset 0 1px #fff1}
+.primary:hover,.nav-cta:hover{filter:brightness(1.12)}
+.secondary:hover{background:rgba(80,55,133,.42)}
+.section{padding:44px 0 10px;scroll-margin-top:24px}
+.section-kicker{color:var(--cyan);font-size:12px;letter-spacing:2px;text-transform:uppercase}
+h2{font-size:clamp(28px,4vw,42px);line-height:1.12;margin:8px 0 24px;letter-spacing:-1px}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.plan{min-height:255px;padding:25px;border:1px solid rgba(188,153,255,.25);border-radius:22px;background:linear-gradient(145deg,rgba(50,34,103,.58),rgba(12,22,61,.62));box-shadow:0 16px 45px #06031d44,inset 0 1px #fff1;backdrop-filter:blur(16px);display:flex;flex-direction:column}
+.plan h3{margin:0 0 12px;font-size:23px}
+.plan p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.price{font-size:30px;font-weight:800;margin:22px 0 15px;color:#fff}
+.choose{width:100%;border:1px solid rgba(181,151,255,.32);border-radius:13px;padding:13px;background:rgba(111,66,180,.28);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.choose:disabled{opacity:.45;cursor:not-allowed}
+.checkout{margin-top:24px;padding:26px;border:1px solid rgba(188,153,255,.25);border-radius:22px;background:rgba(14,17,55,.52);backdrop-filter:blur(16px)}
+.checkout label{display:block;font-size:14px;margin-bottom:9px}
+.checkout-row{display:grid;grid-template-columns:1fr auto;gap:12px}
+input{width:100%;min-width:0;border:1px solid rgba(135,153,220,.35);border-radius:12px;padding:14px 16px;background:rgba(4,13,40,.7);color:#fff;font:inherit;outline:none}
+input:focus{border-color:var(--cyan)}
+.notice{min-height:24px;margin-top:12px;color:var(--cyan);font-size:13px}
+.empty{grid-column:1/-1;padding:24px;border:1px dashed rgba(190,157,255,.3);border-radius:18px;color:var(--muted);background:rgba(16,13,49,.28)}
+footer{padding:38px 0 0;text-align:center;color:#8e86ae;font-size:12px}
+@media(max-width:780px){main{width:calc(100% - 28px)}.nav{gap:12px;padding-left:13px}.links{gap:12px;font-size:12px}.brand{font-size:19px}.nav-cta{padding:9px 13px}.hero{min-height:520px;padding-top:105px}h1{letter-spacing:-1.6px}.plans{grid-template-columns:1fr}.plan{min-height:unset}}
+@media(max-width:560px){.nav{height:auto;min-height:58px;flex-wrap:wrap;border-radius:22px}.links{order:3;flex-basis:100%;overflow-x:auto;justify-content:flex-start;padding:4px 2px 8px}.nav-cta{margin-left:auto}.hero{padding-top:85px;min-height:490px}h1{font-size:clamp(38px,11vw,54px);margin-top:24px}.lead{font-size:15px}.actions{align-items:stretch;flex-direction:column;max-width:290px}.checkout-row{grid-template-columns:1fr}.primary{width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+<main>
+<header class="nav">
+<a class="brand" href="#top" aria-label="Vkus"><span class="brand-mark"><span>V</span></span><span>Vkus</span></a>
+<nav class="links" aria-label="Основная навигация">
+<a href="#features">Возможности</a><a href="#how">Как работает</a><a href="#pricing">Цены</a><a href="#faq">FAQ</a><a href="#contacts">Контакты</a>
+</nav>
+<a class="nav-cta" href="#pricing">Купить лицензию</a>
+</header>
+<section class="hero" id="top">
+<div class="eyebrow"><span class="spark">✧</span> Приложение для поиска клиентов</div>
+<h1>Находите клиентов.<span>Без холодных продаж.</span></h1>
+<p class="lead">Vkus помогает находить потенциальных клиентов по запросам, публикациям и обсуждениям в разных источниках — там, где люди сами пишут о своей потребности.</p>
+<div class="actions"><a class="primary" href="#pricing">Выбрать лицензию&nbsp; →</a><a class="secondary" href="#how">Как это работает</a></div>
+</section>
+<section class="section" id="pricing">
+<div class="section-kicker">Лицензии Vkus</div>
+<h2>Выберите подходящий тариф</h2>
+<div id="plans" class="plans"><div class="empty">Загружаем каталог лицензий…</div></div>
+<div class="checkout">
+<form id="checkout">
+<label for="email">Email для получения лицензионного ключа</label>
+<div class="checkout-row"><input id="email" type="email" autocomplete="email" placeholder="name@example.com" required maxlength="254"><button class="primary" id="pay" type="submit" disabled>Перейти к оплате</button></div>
+<div id="notice" class="notice" role="status" aria-live="polite">Сначала выберите тариф.</div>
+</form>
+</div>
+</section>
+<footer id="contacts">Vkus License Store</footer>
 </main>
+</div>
 <script>
-const plansNode=document.getElementById('plans'),notice=document.getElementById('notice'),pay=document.getElementById('pay');
+const plansNode=document.getElementById('plans');
+const notice=document.getElementById('notice');
+const pay=document.getElementById('pay');
+const planOrder=['Базовый','Стандартный','Премиум'];
 let selectedPlan=null;
 const money=(minor,currency)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:currency||'RUB',maximumFractionDigits:0}).format(minor/100);
-function selectPlan(plan,button){selectedPlan=plan;document.querySelectorAll('.plan .button').forEach(x=>x.textContent='Выбрать тариф');button.textContent='Выбран';pay.disabled=false;notice.textContent='Выбран тариф: '+plan.title;}
-async function loadPlans(){try{const r=await fetch('/api/plans',{headers:{accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const data=await r.json();plansNode.replaceChildren();if(!Array.isArray(data.plans)||!data.plans.length){const e=document.createElement('div');e.className='empty';e.textContent='Каталог тарифов ещё не опубликован. Попробуйте позже.';plansNode.append(e);return;}for(const plan of data.plans){const card=document.createElement('article');card.className='plan';const title=document.createElement('h3');title.textContent=plan.title;const desc=document.createElement('p');desc.textContent=plan.description||'';const price=document.createElement('div');price.className='price';price.textContent=money(plan.amount_minor,plan.currency);const btn=document.createElement('button');btn.type='button';btn.className='button';btn.textContent='Выбрать тариф';btn.addEventListener('click',()=>selectPlan(plan,btn));card.append(title,desc,price,btn);plansNode.append(card);}}catch(e){plansNode.replaceChildren();const n=document.createElement('div');n.className='empty';n.textContent='Не удалось загрузить тарифы. Обновите страницу позже.';plansNode.append(n);}}
-document.getElementById('checkout').addEventListener('submit',async e=>{e.preventDefault();if(!selectedPlan)return;pay.disabled=true;notice.textContent='Создаём защищённый заказ…';try{const r=await fetch('/api/orders',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({plan_id:selectedPlan.id,email:document.getElementById('email').value.trim()})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Не удалось создать заказ');notice.textContent='Заказ создан. Открываем защищённую страницу оплаты…';window.location.assign(data.payment_url);}catch(err){notice.textContent='Ошибка: '+(err.message||'попробуйте позже');pay.disabled=false;}});
+function selectPlan(plan,button){
+ selectedPlan=plan;
+ document.querySelectorAll('.plan .choose').forEach(x=>{x.textContent='Выбрать тариф';x.setAttribute('aria-pressed','false')});
+ button.textContent='Выбран';
+ button.setAttribute('aria-pressed','true');
+ pay.disabled=false;
+ notice.textContent='Выбран тариф: '+plan.title+'. Укажите email для получения ключа.';
+}
+async function loadPlans(){
+ try{
+  const response=await fetch('/api/plans',{headers:{accept:'application/json'}});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const data=await response.json();
+  plansNode.replaceChildren();
+  if(!Array.isArray(data.plans)||!data.plans.length){
+   const empty=document.createElement('div');empty.className='empty';
+   empty.textContent='Каталог лицензий временно недоступен.';
+   plansNode.append(empty);return;
+  }
+  const plans=[...data.plans].sort((a,b)=>{
+   const ai=planOrder.indexOf(a.title),bi=planOrder.indexOf(b.title);
+   return (ai<0?99:ai)-(bi<0?99:bi);
+  });
+  for(const plan of plans){
+   const card=document.createElement('article');card.className='plan';
+   const title=document.createElement('h3');title.textContent=plan.title;
+   const desc=document.createElement('p');desc.textContent=plan.description||'';
+   const price=document.createElement('div');price.className='price';price.textContent=money(plan.amount_minor,plan.currency);
+   const button=document.createElement('button');button.type='button';button.className='choose';button.textContent='Выбрать тариф';button.setAttribute('aria-pressed','false');
+   button.addEventListener('click',()=>selectPlan(plan,button));
+   card.append(title,desc,price,button);plansNode.append(card);
+  }
+ }catch(error){
+  plansNode.replaceChildren();const empty=document.createElement('div');empty.className='empty';
+  empty.textContent='Не удалось загрузить каталог. Попробуйте обновить страницу.';
+  plansNode.append(empty);
+ }
+}
+document.getElementById('checkout').addEventListener('submit',async event=>{
+ event.preventDefault();if(!selectedPlan)return;
+ pay.disabled=true;notice.textContent='Создаём защищённый заказ…';
+ try{
+  const response=await fetch('/api/orders',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({plan_id:selectedPlan.id,email:document.getElementById('email').value.trim()})});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'Не удалось создать заказ');
+  notice.textContent='Заказ создан. Открываем защищённую страницу оплаты…';
+  window.location.assign(data.payment_url);
+ }catch(error){notice.textContent='Ошибка: '+(error.message||'попробуйте позже');pay.disabled=false;}
+});
 loadPlans();
-</script></body></html>
+</script>
+</body>
+</html>

@@ -24,4 +24,16 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm test
+      - run: npx wrangler d1 migrations apply vkus-license-store --local
+      - name: Worker local runtime smoke
+        run: |
+          npx wrangler dev --local --ip 127.0.0.1 --port 8787 > /tmp/vkus-worker.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/api/health > /tmp/vkus-health.json; then break; fi
+            sleep 2
+          done
+          grep -q 'vkus-license-store' /tmp/vkus-health.json
+          curl -fsS http://127.0.0.1:8787/api/plans | grep -q '"plans":\\[\\]'
       - run: npx wrangler --version

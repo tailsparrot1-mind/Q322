@@ -419,7 +419,6 @@ def open_cloud_marketplace_window(parent):
               selectbackground=[("readonly", "#0a1731")],
               selectforeground=[("readonly", "#eaf1ff")],
               background=[("readonly", "#17264a")])
-
     shell = tk.Frame(win, bg="#07122a", highlightbackground="#7136c3", highlightthickness=1)
     shell.pack(fill="both", expand=True, padx=10, pady=10)
     header = tk.Frame(shell, bg="#07122a")
@@ -472,7 +471,7 @@ def open_cloud_marketplace_window(parent):
         widget = widget_type(cell, **options)
         widget.pack(fill="x", pady=(3, 0))
         return widget
-    filter_field("Поиск", tk.Entry, textvariable=query_var, width=28,
+    search_entry = filter_field("Поиск по объявлениям", tk.Entry, textvariable=query_var, width=28,
                  bg="#0a1731", fg="white", insertbackground="white", relief="flat",
                  bd=0, highlightthickness=1, highlightbackground="#304b80",
                  highlightcolor="#8d4cff", font=("DejaVu Sans", 9))
@@ -501,6 +500,8 @@ def open_cloud_marketplace_window(parent):
         cards_window, width=event.width))
     cards_frame.grid_columnconfigure(0, weight=1, uniform="market-cards")
     cards_frame.grid_columnconfigure(1, weight=1, uniform="market-cards")
+    win._marketplace_search_entry = search_entry
+    win._marketplace_cards_frame = cards_frame
 
     details = tk.Label(shell, text="Объявления загружаются из общей базы Vkus.",
                        bg="#0a1731", fg="#9fb4df", justify="left", anchor="w",
@@ -613,6 +614,21 @@ def open_cloud_marketplace_window(parent):
                 for child in widget.winfo_children():
                     child.bind("<Button-1>", choose, add="+")
         status_label.configure(text=f"Объявлений в общей базе: {len(rows)}")
+        try:
+            result_count.configure(text=f"{len(rows)} объявлений")
+            for index, label in enumerate(live_card_labels):
+                if index < len(rows):
+                    item = rows[index]
+                    label.configure(
+                        text=(item.get("title") or "Без заголовка")[:58]
+                             + "\n" + (item.get("city") or "Город не указан")
+                             + (f"  ·  {item.get('price')} {item.get('currency') or 'RUB'}"
+                                if item.get("price") not in (None, "") else "")
+                    )
+                else:
+                    label.configure(text="")
+        except (NameError, tk.TclError):
+            pass
         show_details()
 
     def show_details(_event=None):
@@ -818,14 +834,12 @@ def open_cloud_marketplace_window(parent):
                         padx=12, pady=10, wraplength=840)
         note.pack(fill="x", padx=18, pady=(0, 8))
         inbox_rows = {}
-
         def load_inbox():
             try:
                 rows = client.list_incoming_responses(limit=100)
             except (CloudMarketplaceError, ValueError) as exc:
                 notify_error(exc)
-                return
-            inbox_rows.clear()
+                return            inbox_rows.clear()
             inbox_table.delete(*inbox_table.get_children())
             for row in rows:
                 key = str(row["id"])
@@ -979,10 +993,16 @@ def open_cloud_marketplace_window(parent):
             if x1 <= nx <= x2 and y1 <= ny <= y2:
                 return key
         return None
+    # Show the real announcement board built above (filters + live listing cards).
+    # The mockup image is deliberately not used as an interface or data surface.
+    reference_dashboard = shell
+
+
     def finish_gate_auth(panel):
         update_account_label()
         panel.destroy()
         gate.place_forget()
+        reference_dashboard.lift()
         refresh()
 
     def show_role_auth(role):
@@ -1065,7 +1085,7 @@ def open_cloud_marketplace_window(parent):
         else:
             update_account_label()
     gate.lift()
-    for variable in (query_var, kind_var, category_var, city_var):
+    for variable in (kind_var, category_var):
         variable.trace_add("write", refresh)
     refresh()
     return win

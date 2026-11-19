@@ -417,8 +417,7 @@ def open_cloud_marketplace_window(parent):
     style.map("TCombobox", fieldbackground=[("readonly", "#0a1731")],
               foreground=[("readonly", "#eaf1ff")],
               selectbackground=[("readonly", "#0a1731")],
-              selectforeground=[("readonly", "#eaf1ff")],
-              background=[("readonly", "#17264a")])
+              selectforeground=[("readonly", "#eaf1ff")],              background=[("readonly", "#17264a")])
 
     shell = tk.Frame(win, bg="#07122a", highlightbackground="#7136c3", highlightthickness=1)
     shell.pack(fill="both", expand=True, padx=10, pady=10)
@@ -615,16 +614,12 @@ def open_cloud_marketplace_window(parent):
         status_label.configure(text=f"Объявлений в общей базе: {len(rows)}")
         try:
             result_count.configure(text=f"{len(rows)} объявлений")
-        except (NameError, tk.TclError):
-            pass
-        try:
-            result_count.configure(text=f"{len(rows)} объявлений")
             for index, label in enumerate(live_card_labels):
                 if index < len(rows):
                     item = rows[index]
                     label.configure(
                         text=(item.get("title") or "Без заголовка")[:58]
-                             + "\\n" + (item.get("city") or "Город не указан")
+                             + "\n" + (item.get("city") or "Город не указан")
                              + (f"  ·  {item.get('price')} {item.get('currency') or 'RUB'}"
                                 if item.get("price") not in (None, "") else "")
                     )
@@ -837,7 +832,6 @@ def open_cloud_marketplace_window(parent):
                         padx=12, pady=10, wraplength=840)
         note.pack(fill="x", padx=18, pady=(0, 8))
         inbox_rows = {}
-
         def load_inbox():
             try:
                 rows = client.list_incoming_responses(limit=100)
@@ -1084,9 +1078,18 @@ def open_cloud_marketplace_window(parent):
             ("Красота и здоровье", 1087, 430, 130, 100),
             ("Обучение", 1228, 430, 120, 100),
         ]
+        category_aliases = {
+            "Услуги": "Услуги",
+            "Работа": "Работа",
+            "IT и техника": "Товары",
+            "Недвижимость": "Аренда",
+            "Транспорт": "Товары",
+            "Товары": "Товары",
+            "Красота и здоровье": "Услуги",
+            "Обучение": "Услуги",
+        }
         def choose_category(value):
-            match = next((c for c in CATEGORIES if c.lower() == value.lower()), None)
-            category_var.set(match or "Все категории")
+            category_var.set(category_aliases.get(value, "Все категории"))
             do_search()
         def on_reference_click(event):
             scale = transform["scale"]

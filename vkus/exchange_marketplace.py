@@ -615,6 +615,10 @@ def open_cloud_marketplace_window(parent):
         status_label.configure(text=f"Объявлений в общей базе: {len(rows)}")
         try:
             result_count.configure(text=f"{len(rows)} объявлений")
+        except (NameError, tk.TclError):
+            pass
+        try:
+            result_count.configure(text=f"{len(rows)} объявлений")
             for index, label in enumerate(live_card_labels):
                 if index < len(rows):
                     item = rows[index]
@@ -1229,7 +1233,7 @@ def open_cloud_marketplace_window(parent):
         else:
             update_account_label()
     gate.lift()
-    for variable in (query_var, kind_var, category_var, city_var):
+    for variable in (kind_var, category_var):
         variable.trace_add("write", refresh)
     refresh()
     return win

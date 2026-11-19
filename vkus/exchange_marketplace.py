@@ -613,6 +613,22 @@ def open_cloud_marketplace_window(parent):
                 for child in widget.winfo_children():
                     child.bind("<Button-1>", choose, add="+")
         status_label.configure(text=f"Объявлений в общей базе: {len(rows)}")
+        try:
+            result_count.configure(text=f"{len(rows)} объявлений")
+            for index, label in enumerate(live_card_labels):
+                if index < len(rows):
+                    item = rows[index]
+                    label.configure(
+                        text=(item.get("title") or "Без заголовка")[:58]
+                             + "\\n" + (item.get("city") or "Город не указан")
+                             + (f"  ·  {item.get('price')} {item.get('currency') or 'RUB'}"
+                                if item.get("price") not in (None, "") else "")
+                    )
+                    label.place(relx=0, rely=0, width=1, height=1)
+                else:
+                    label.configure(text="")
+        except (NameError, tk.TclError):
+            pass
         show_details()
 
     def show_details(_event=None):
@@ -1084,6 +1100,14 @@ def open_cloud_marketplace_window(parent):
                                 bg="#10102a", fg="#c9a7ff",
                                 font=("DejaVu Sans", 9, "bold"))
         overlay(result_count, 1140, 552, 220, 28)
+        live_card_labels = []
+        for x, y, w, h in ((280, 748, 235, 66), (535, 748, 235, 66),
+                           (790, 748, 235, 66), (1045, 748, 235, 66)):
+            live = tk.Label(reference_view, text="", bg="#11152b", fg="#f4efff",
+                            anchor="w", justify="left", padx=8, pady=4,
+                            wraplength=220, font=("DejaVu Sans", 8, "bold"))
+            overlay(live, x, y, w, h)
+            live_card_labels.append(live)
 
         def redraw_reference(_event=None):
             cw, ch = max(1, reference_canvas.winfo_width()), max(1, reference_canvas.winfo_height())

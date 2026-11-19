@@ -417,8 +417,8 @@ def open_cloud_marketplace_window(parent):
     style.map("TCombobox", fieldbackground=[("readonly", "#0a1731")],
               foreground=[("readonly", "#eaf1ff")],
               selectbackground=[("readonly", "#0a1731")],
-              selectforeground=[("readonly", "#eaf1ff")],              background=[("readonly", "#17264a")])
-
+              selectforeground=[("readonly", "#eaf1ff")],
+              background=[("readonly", "#17264a")])
     shell = tk.Frame(win, bg="#07122a", highlightbackground="#7136c3", highlightthickness=1)
     shell.pack(fill="both", expand=True, padx=10, pady=10)
     header = tk.Frame(shell, bg="#07122a")
@@ -837,8 +837,7 @@ def open_cloud_marketplace_window(parent):
                 rows = client.list_incoming_responses(limit=100)
             except (CloudMarketplaceError, ValueError) as exc:
                 notify_error(exc)
-                return
-            inbox_rows.clear()
+                return            inbox_rows.clear()
             inbox_table.delete(*inbox_table.get_children())
             for row in rows:
                 key = str(row["id"])

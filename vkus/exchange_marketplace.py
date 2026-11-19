@@ -1069,14 +1069,16 @@ def open_cloud_marketplace_window(parent):
             match = next((c for c in CATEGORIES if c.lower() == value.lower()), None)
             category_var.set(match or "Все категории")
             do_search()
-        for caption, x, y, w, h in category_hits:
-            hit = tk.Button(reference_view, text="", command=lambda v=caption: choose_category(v),
-                            bg="#11152b", activebackground="#11152b",
-                            activeforeground="#ffffff", relief="flat", bd=0,
-                            highlightthickness=0, cursor="hand2")
-            # Visually transparent against the dark glass tile; no visible button chrome.
-            hit.configure(bg="#11152b")
-            overlay(hit, x, y, w, h)
+        def on_reference_click(event):
+            scale = transform["scale"]
+            if scale <= 0:
+                return
+            ix = (event.x - transform["x"]) / scale
+            iy = (event.y - transform["y"]) / scale
+            for caption, x, y, w, h in category_hits:
+                if x <= ix <= x + w and y <= iy <= y + h:
+                    choose_category(caption)
+                    return "break"
 
         result_count = tk.Label(reference_view, text="",
                                 bg="#10102a", fg="#c9a7ff",
@@ -1098,6 +1100,10 @@ def open_cloud_marketplace_window(parent):
                              width=max(1, round(nw * iw)), height=max(1, round(nh * ih)))
 
         reference_canvas.bind("<Configure>", redraw_reference)
+        reference_canvas.bind("<Button-1>", on_reference_click)
+        search_input.bind("<Return>", lambda _e: do_search())
+        city_box.bind("<Return>", lambda _e: do_search())
+        category_box.bind("<<ComboboxSelected>>", lambda _e: do_search())
         reference_view.lift()
         reference_view._reference_canvas = reference_canvas
         reference_view._reference_overlays = overlays

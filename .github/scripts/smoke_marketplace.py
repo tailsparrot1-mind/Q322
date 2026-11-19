@@ -54,5 +54,25 @@ forms = [child for child in gate.winfo_children()
 assert forms, "Role image hotspot did not open the registration form"
 ImageGrab.grab().save(out / "vkus-marketplace-registration-form.png")
 
+# Capture the actual announcement home screen as a separate launch screenshot.
+gate.place_forget()
+dashboard = app.marketplace_page._marketplace_reference_view
+assert dashboard.winfo_exists(), "Marketplace reference dashboard was not created"
+dashboard.lift()
+app.root.update_idletasks()
+app.root.update()
+
+search_entry = app.marketplace_page._marketplace_search_entry
+assert search_entry.winfo_exists(), "Marketplace search entry was not created"
+search_entry.insert(0, "проверка поиска")
+search_entry.event_generate("<Return>")
+app.root.update_idletasks()
+app.root.update()
+search_entry.delete(0, tk.END)
+app.root.update_idletasks()
+app.root.update()
+
+ImageGrab.grab().save(out / "vkus-marketplace-home-running.png")
+
 app.close()
-print("Marketplace role gate and registration hotspot smoke test passed.")
+print("Marketplace role gate, registration, dashboard and search smoke test passed.")

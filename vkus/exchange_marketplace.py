@@ -979,10 +979,145 @@ def open_cloud_marketplace_window(parent):
             if x1 <= nx <= x2 and y1 <= ny <= y2:
                 return key
         return None
+    # Main Marketplace surface: reference artwork with live, transparent controls.
+    # The external Avito/source-search module is not used here.
+    def build_reference_dashboard():
+        from PIL import Image, ImageTk
+        for old_widget in (header, auth_bar, filters, body, details, actions):
+            try:
+                old_widget.pack_forget()
+            except tk.TclError:
+                pass
+
+        reference_view = tk.Frame(shell, bg="#05091a", bd=0, highlightthickness=0)
+        reference_view.pack(fill="both", expand=True)
+        reference_canvas = tk.Canvas(reference_view, bg="#05091a",
+                                     highlightthickness=0, bd=0)
+        reference_canvas.pack(fill="both", expand=True)
+
+        candidates = (
+            Path(__file__).resolve().parent / "assets" / "marketplace_home_reference.png",
+            Path(__file__).resolve().parent / "assets" / "birzha_reference.png",
+        )
+        reference_path = next((p for p in candidates if p.is_file()), None)
+        if reference_path is None:
+            raise FileNotFoundError(
+                "Не найден фон Marketplace: assets/marketplace_home_reference.png "
+                "или assets/birzha_reference.png"
+            )
+        reference_source = Image.open(reference_path).convert("RGB")
+        rw, rh = reference_source.size
+        reference_canvas._photo = None
+        transform = {"scale": 1.0, "x": 0, "y": 0}
+        overlays = []
+
+        def overlay(widget, x, y, w, h):
+            overlays.append((widget, x / rw, y / rh, w / rw, h / rh))
+            return widget
+
+        # The controls sit directly over the matching controls in the artwork.
+        search_input = tk.Entry(reference_view, textvariable=query_var,
+                                bg="#10132b", fg="#f5f2ff",
+                                insertbackground="white", relief="flat", bd=0,
+                                highlightthickness=0,
+                                font=("DejaVu Sans", 11))
+        search_input.insert(0, "")
+        overlay(search_input, 318, 365, 640, 42)
+
+        city_box = ttk.Combobox(reference_view, textvariable=city_var,
+                                values=("", "Москва", "Санкт-Петербург", "Казань",
+                                        "Екатеринбург", "Новосибирск", "Другой город"),
+                                state="normal", font=("DejaVu Sans", 9))
+        overlay(city_box, 1000, 366, 165, 40)
+
+        category_box = ttk.Combobox(reference_view, textvariable=category_var,
+                                    values=("Все категории",) + CATEGORIES,
+                                    state="readonly", font=("DejaVu Sans", 9))
+        overlay(category_box, 1170, 366, 185, 40)
+
+        def do_search():
+            refresh()
+            status_label.configure(text=f"Найдено объявлений: {len(rows_by_id)}")
+
+        search_button = tk.Button(reference_view, text="НАЙТИ",
+                                  command=do_search, bg="#7627f3",
+                                  activebackground="#8d4aff", fg="white",
+                                  activeforeground="white", relief="flat", bd=0,
+                                  cursor="hand2",
+                                  font=("DejaVu Sans", 9, "bold"))
+        overlay(search_button, 1365, 365, 145, 44)
+
+        add_button = tk.Button(reference_view, text="+  Разместить объявление",
+                                command=create_or_edit, bg="#7627f3",
+                                activebackground="#914cff", fg="white",
+                                relief="flat", bd=0, cursor="hand2",
+                                font=("DejaVu Sans", 10, "bold"))
+        overlay(add_button, 300, 275, 265, 48)
+
+        # Category tiles are transparent hit areas over the artwork.
+        category_hits = [
+            ("Услуги", 267, 430, 121, 100),
+            ("Работа", 398, 430, 110, 100),
+            ("IT и техника", 520, 430, 130, 100),
+            ("Недвижимость", 660, 430, 154, 100),
+            ("Транспорт", 823, 430, 132, 100),
+            ("Товары", 965, 430, 112, 100),
+            ("Красота и здоровье", 1087, 430, 130, 100),
+            ("Обучение", 1228, 430, 120, 100),
+        ]
+        def choose_category(value):
+            match = next((c for c in CATEGORIES if c.lower() == value.lower()), None)
+            category_var.set(match or "Все категории")
+            do_search()
+        for caption, x, y, w, h in category_hits:
+            hit = tk.Button(reference_view, text="", command=lambda v=caption: choose_category(v),
+                            bg="#11152b", activebackground="#11152b",
+                            activeforeground="#ffffff", relief="flat", bd=0,
+                            highlightthickness=0, cursor="hand2")
+            # Visually transparent against the dark glass tile; no visible button chrome.
+            hit.configure(bg="#11152b")
+            overlay(hit, x, y, w, h)
+
+        result_count = tk.Label(reference_view, text="",
+                                bg="#10102a", fg="#c9a7ff",
+                                font=("DejaVu Sans", 9, "bold"))
+        overlay(result_count, 1140, 552, 220, 28)
+
+        def redraw_reference(_event=None):
+            cw, ch = max(1, reference_canvas.winfo_width()), max(1, reference_canvas.winfo_height())
+            scale = min(cw / rw, ch / rh)
+            iw, ih = max(1, round(rw * scale)), max(1, round(rh * scale))
+            resized = reference_source.resize((iw, ih), Image.Resampling.LANCZOS)
+            reference_canvas._photo = ImageTk.PhotoImage(resized)
+            reference_canvas.delete("all")
+            ox, oy = (cw - iw) / 2, (ch - ih) / 2
+            reference_canvas.create_image(ox, oy, image=reference_canvas._photo, anchor="nw")
+            transform.update(scale=scale, x=ox, y=oy)
+            for widget, nx, ny, nw, nh in overlays:
+                widget.place(x=round(ox + nx * iw), y=round(oy + ny * ih),
+                             width=max(1, round(nw * iw)), height=max(1, round(nh * ih)))
+
+        reference_canvas.bind("<Configure>", redraw_reference)
+        reference_view.lift()
+        reference_view._reference_canvas = reference_canvas
+        reference_view._reference_overlays = overlays
+        win._marketplace_reference_view = reference_view
+        win._marketplace_search_entry = search_input
+
+        def update_count(*_):
+            result_count.configure(text=f"{len(rows_by_id)} объявлений")
+        query_var.trace_add("write", lambda *_: update_count())
+        category_var.trace_add("write", lambda *_: update_count())
+        city_var.trace_add("write", lambda *_: update_count())
+        return reference_view
+
+    reference_dashboard = build_reference_dashboard()
+
     def finish_gate_auth(panel):
         update_account_label()
         panel.destroy()
         gate.place_forget()
+        reference_dashboard.lift()
         refresh()
 
     def show_role_auth(role):

@@ -624,7 +624,6 @@ def open_cloud_marketplace_window(parent):
                              + (f"  ·  {item.get('price')} {item.get('currency') or 'RUB'}"
                                 if item.get("price") not in (None, "") else "")
                     )
-                    label.place(relx=0, rely=0, width=1, height=1)
                 else:
                     label.configure(text="")
         except (NameError, tk.TclError):

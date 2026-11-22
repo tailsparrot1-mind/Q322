@@ -168,10 +168,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     finally:
+        # Vkus may already own this persistent Firefox session. Detach the
+        # collector's atexit handler instead of quitting the shared browser.
+        import atexit
         try:
-            browser.stop()
+            atexit.unregister(browser.stop)
         except Exception:
-            logger.exception("Firefox shutdown failed")
+            pass
 
     records = list(normalized.values())
     print(json.dumps({"collected": len(records), "items": records}, ensure_ascii=False, indent=2))

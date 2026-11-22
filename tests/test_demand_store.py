@@ -1,8 +1,13 @@
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
 
-from vkus.demand_store import DemandStore
+MODULE_PATH = Path(__file__).resolve().parents[1] / "vkus" / "demand_store.py"
+SPEC = importlib.util.spec_from_file_location("vkus_demand_store_test_module", MODULE_PATH)
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+DemandStore = MODULE.DemandStore
 
 
 class DemandStoreTests(unittest.TestCase):

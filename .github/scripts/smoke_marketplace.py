@@ -153,7 +153,12 @@ try:
     web = page._marketplace_webview
 
     ready = js(web, app.root, "document.readyState")
-    assert ready == "complete", f"Marketplace HTML did not finish loading: {ready!r}"
+    # WebKitGTK may report "interactive" while the local app:// document is
+    # already parsed and its deferred JS is still finishing. The actual
+    # readiness gate below is the role-gate DOM becoming visible and usable.
+    assert ready in ("interactive", "complete"), (
+        f"Marketplace HTML document did not become interactive: {ready!r}"
+    )
     deadline = time.monotonic() + 10
     gate_visible = False
     while time.monotonic() < deadline:

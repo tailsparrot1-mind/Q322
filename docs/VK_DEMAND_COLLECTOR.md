@@ -41,6 +41,8 @@ python -m vkus.vk_demand_collector --query "ищу мастера" --city "Ор�
 
 The server checks the token hash, source binding, revocation state, source enabled state, and terms-review timestamp. The source currently remains disabled pending review; upload will be rejected until that gate is completed. Do not mark terms reviewed without checking the current VK terms and the intended collection scope.
 
+Backend migration source is tracked at `supabase/migrations/20261122_vk_collector_auth.sql`; the matching schema and Edge Function changes have already been applied to the connected Supabase project. The migration assumes the base Vkus demand-engine tables already exist.
+
 ## Current limitations
 - The existing Selenium DOM extraction is reused; VK can change its page structure and selectors. Real live VK extraction has not yet been validated after this adapter was added.
 - Region/city are supplied as explicit command-line filters; this adapter does not infer a user's location from their profile.

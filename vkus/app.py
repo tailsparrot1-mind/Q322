@@ -1480,7 +1480,6 @@ class VkusApp:
             self._render_results([])
             return
 
-        self._confirm_local_demand_storage()
         self._search_generation += 1
         generation = self._search_generation
         community_url = self.community_url_var.get().strip()
@@ -1489,6 +1488,7 @@ class VkusApp:
             self.results_count.config(text='Выберите сообщество')
             self._render_results([], status='ВЫБЕРИТЕ СООБЩЕСТВО VK')
             return
+        self._confirm_local_demand_storage()
         self.settings['search_community_url'] = community_url
         self.settings['search_community_name'] = community_name
         self._save_persistent_state()

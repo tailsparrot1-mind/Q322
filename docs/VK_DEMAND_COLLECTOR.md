@@ -50,7 +50,7 @@ The server checks the token hash, source binding, revocation state, source enabl
 
 ## Test
 ```bash
-python -m unittest tests.test_vk_demand_collector -v
+python -m unittest discover -s tests -p 'test_vk_demand_collector.py' -v
 ```
 
 The tests cover intent classification and normalization only. They do not test live Firefox, VK login, DOM selectors, network connectivity, or backend ingestion.

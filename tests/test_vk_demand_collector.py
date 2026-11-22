@@ -1,6 +1,11 @@
+import runpy
 import unittest
 
-from vkus.vk_demand_collector import classify_intent, normalize_result
+# Load the standalone module without importing vkus/__init__.py, which pulls
+# the full desktop runtime (including Selenium) into this pure unit test.
+_collector = runpy.run_path("vkus/vk_demand_collector.py")
+classify_intent = _collector["classify_intent"]
+normalize_result = _collector["normalize_result"]
 
 
 class VKDemandCollectorTests(unittest.TestCase):

@@ -1,0 +1,83 @@
+# Vkus — личное рабочее пространство VK
+Дата: 22.11.2026
+Ветка: feature/vk-personal-workspace
+Draft PR: https://github.com/tailsparrot1-mind/Q322/pull/4
+
+## Цель
+Перевести долговременное хранение результатов VK-поиска в личное пространство участника. Участник использует собственный авторизованный Firefox-профиль. Результаты после согласия хранятся локально, а не отправляются в общую базу.
+
+## Изменения
+- Существующий вход через Firefox/Selenium сохранён; пароль VK не запрашивается и не сохраняется Vkus.
+- Добавлен однократный consent prompt перед долговременным архивированием.
+- Создан vkus/demand_store.py — SQLite-хранилище ~/.vkus/demand.sqlite3.
+- Таблицы: workspace_meta, search_runs, demand_items, search_run_items.
+- Дедупликация по SHA-256 от типа, URL и нормализованного текста; повторное обнаружение обновляет last_seen_at.
+- После завершения поиска интерфейс показывает количество записей, сохранённых в личной базе.
+- Добавлены тесты записи, дедупликации, изоляции рабочих пространств и восстановления идентификатора после повторного открытия.
+- Обновлены README, docs/VK_PERSONAL_WORKSPACE.md и GitHub Actions.
+
+## Статус проверок
+- compileall: PASS.
+- focused SQLite unit tests: PASS (GitHub Actions run 45054160634).
+- ZIP source package: PASS.
+- marketplace-ui-smoke: IN PROGRESS при последней проверке.
+- license-store-webview-smoke: IN PROGRESS при последней проверке.
+- Реальный VK login/search: НЕ ПРОВЕРЕН.
+- Kali Linux / VMware: НЕ ПРОВЕРЕН.
+- VK ID OAuth: НЕ РЕАЛИЗОВАН.
+
+## Ограничения
+- База локальная для текущего системного пользователя/установки Vkus; Supabase не используется.
+- workspace_id не является VK user ID.
+- Один локальный Firefox-профиль — один активный VK-сеанс. Мультиаккаунтное переключение внутри одной установки пока отсутствует.
+- Не добавлялись новые VK API методы или скрейпер; существующий алгоритм браузерного поиска не менялся.
+- Эта реализация не подтверждает правомерность автоматизации браузера по правилам VK и не разрешает централизованную коммерческую базу.
+
+## Следующий этап
+Получить итоговые статусы обоих UI smoke jobs. После этого проверить запуск приложения в целевой Kali/VMware. Не сливать PR до проверки.
+
+
+## Последующие уточнения
+- Добавлена кнопка «ЛИЧНЫЙ АРХИВ» для включения/приостановки записи; отключение не удаляет существующую БД.
+- Запись в SQLite перенесена на поисковый worker-поток.
+- На POSIX-системах права каталога/файла ограничиваются до 0700/0600 (best effort).
+- Согласие запрашивается после проверки режима поиска и выбранного сообщества.
+
+CI run 45054160634 проверил промежуточный head a3a08ac38c2f9b4adb57881a6b7eb43988562974: compileall PASS, focused SQLite tests PASS, ZIP package PASS, marketplace-ui-smoke PASS. license-store-webview-smoke ещё выполнялся на момент проверки. Более поздние уточнения пока не имеют отдельного подтверждённого CI run.
+
+
+## Экран личного архива — реализовано
+
+- В первичной настройке добавлена кнопка «ОТКРЫТЬ АРХИВ». Открытие не включает сбор автоматически.
+- Отдельное окно содержит вкладки «Найденные записи» и «История поиска».
+- Список показывает тип, автора, город, дату и текст. Добавлены фильтры по тексту/автору/ссылке, городу и типу.
+- Карточка выбранной строки показывает полные поля и URL; отдельные действия открывают публикацию/профиль (только vk.ru / vk.com) или удаляют выбранную запись.
+- История отображает дату, запрос, город, режим и число сохранённых записей; можно восстановить набор результатов конкретного запуска.
+- Добавлены store unit tests для фильтрации, истории и удаления, а также Xvfb desktop smoke с тестовыми данными и screenshot artifact.
+- Типы публикаций нормализуются к post/comment, чтобы фильтры работали одинаково для singular/plural значений.
+
+Проверки для этого этапа запускаются новым GitHub Actions job `personal-archive-ui-smoke`. До завершения Actions нельзя заявлять, что новый UI smoke уже прошёл. Live VK и Kali/VMware всё ещё не проверены.
+
+
+## CI-подтверждение UI
+
+GitHub Actions run 45055685481:
+- compileall + focused SQLite tests: PASS;
+- personal-archive-ui-smoke: PASS (list, text filter, city/type filter, history restore, deletion);
+- marketplace-ui-smoke: PASS;
+- screenshot artifact Vkus-personal-archive-ui uploaded;
+- license-store-webview-smoke was still in progress at last check.
+
+First run 45055445989 had a failing test that assumed deterministic ordering for two search runs created within the same second. The test was corrected to select the run by query value. The personal archive UI smoke itself passed in that first run; the follow-up run confirmed the focused test suite and UI smoke pass.
+
+
+## Полный CI на кодовом head
+
+Run 45055685481, application-code head d5ba6f1e43f157a430c985d878513dc9c0957385:
+- compile + focused SQLite unit tests — PASS;
+- personal-archive-ui-smoke — PASS;
+- marketplace-ui-smoke — PASS;
+- license-store-webview-smoke — PASS.
+Скриншот архива и ZIP исходного пакета опубликованы как workflow artifacts.
+
+На последующем documentation-only head 489f1d033e041247920d56839bb0a0f73ba08b6e run 45055821837: compile, marketplace-ui-smoke и personal-archive-ui-smoke — PASS; license-store-webview-smoke ещё выполнялся на момент последней проверки.

@@ -8,6 +8,7 @@ if sys.platform.startswith('linux'):
 import json
 import threading
 import tkinter as tk
+import webbrowser
 from tkinter import ttk, messagebox
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ from vkus.check_runner import CheckRunner, CheckResult
 from vkus.storage import load_settings, save_settings, setup_logging
 from vkus.lock_screen import LockScreen
 from vkus.license_store import LICENSE_STORE_URL
+from vkus.demand_store import DemandStore
 
 try:
     from PIL import Image, ImageTk, ImageEnhance
@@ -112,6 +114,9 @@ class VkusApp:
         self.root.minsize(1000, 620)
         self.root.configure(bg=BG)
         self.settings = load_settings()
+        self.demand_store = None
+        self.archive_store = None
+        self.archive_window = None
         self.logger = setup_logging()
         self.browser = BrowserManager(self.logger)
         self.checks = build_checks(self.browser, self.settings, self.logger)
@@ -714,9 +719,13 @@ class VkusApp:
             tk.Label(cell,text=label,bg='#071d39',fg=MUTED,font=('TkDefaultFont',7)).pack(anchor='w',padx=7,pady=(4,0))
             tk.Entry(cell,textvariable=var,bg='#071d39',fg=TEXT,insertbackground=CYAN,relief='flat',bd=0,font=('TkDefaultFont',8)).pack(fill='x',padx=7,pady=(1,5))
         actions=tk.Frame(box,bg='#06162c'); actions.grid(row=2,column=0,columnspan=3,sticky='ew',padx=4,pady=(0,6))
-        tk.Button(actions,text='СОХРАНИТЬ',command=self.save_config,bg='#174aa1',fg='white',activebackground='#2465d1',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
-        tk.Button(actions,text='VK / АВТОРИЗАЦИЯ',command=lambda:self.run_one('auth'),bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
-        tk.Button(actions,text='ОТКРЫТЬ VK',command=self._open_vk_direct,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        main_actions=tk.Frame(actions,bg='#06162c'); main_actions.pack(fill='x',padx=2,pady=(0,3))
+        archive_actions=tk.Frame(actions,bg='#06162c'); archive_actions.pack(fill='x',padx=2,pady=(0,2))
+        tk.Button(main_actions,text='СОХРАНИТЬ',command=self.save_config,bg='#174aa1',fg='white',activebackground='#2465d1',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(main_actions,text='VK / АВТОРИЗАЦИЯ',command=lambda:self.run_one('auth'),bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(main_actions,text='ОТКРЫТЬ VK',command=self._open_vk_direct,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(archive_actions,text='ЛИЧНЫЙ АРХИВ',command=self._toggle_local_demand_archive,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(archive_actions,text='ОТКРЫТЬ АРХИВ',command=self._open_local_demand_archive,bg='#123d78',fg=TEXT,activebackground='#1a579e',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
 
     def _open_vk_direct(self):
         def work():
@@ -1427,6 +1436,389 @@ class VkusApp:
         win.protocol('WM_DELETE_WINDOW', lambda: (win.grab_release(), win.destroy(), setattr(self, 'community_picker', None)))
         entry.focus_set()
 
+    def _confirm_local_demand_storage(self):
+        """Ask once before creating a persistent, private local search archive."""
+        consent = str(self.settings.get('local_demand_storage_consent', '')).lower()
+        if consent not in ('yes', 'no'):
+            consent = 'yes' if messagebox.askyesno(
+                'Личная база Vkus',
+                'Сохранять результаты поисков VK в личную базу на этом компьютере?\\n\\n'
+                'База будет находиться в ~/.vkus/demand.sqlite3, не будет отправляться '
+                'в общую базу Vkus и останется в профиле текущего пользователя.',
+                parent=self.root,
+            ) else 'no'
+            self.settings['local_demand_storage_consent'] = consent
+            self._save_persistent_state()
+        if consent != 'yes':
+            return False
+        if self.demand_store is None:
+            try:
+                self.demand_store = DemandStore()
+            except Exception as exc:
+                self.logger.exception('Could not initialize local demand archive')
+                messagebox.showwarning(
+                    'Личная база Vkus',
+                    'Не удалось открыть локальную базу. Поиск продолжится, но архивирование отключено.\\n\\n'
+                    + str(exc)[:500],
+                    parent=self.root,
+                )
+                return False
+        return True
+
+    def _toggle_local_demand_archive(self):
+        """Allow the participant to enable or pause long-term local archiving."""
+        enabled = str(self.settings.get('local_demand_storage_consent', '')).lower() == 'yes'
+        if enabled:
+            if not messagebox.askyesno(
+                'Личная база Vkus',
+                'Отключить сохранение новых результатов?\\n\\n'
+                'Уже сохранённая локальная база останется на компьютере.',
+                parent=self.root,
+            ):
+                return
+            self.settings['local_demand_storage_consent'] = 'no'
+            self.demand_store = None
+            self._save_persistent_state()
+            messagebox.showinfo('Личная база Vkus', 'Архивирование новых результатов отключено.', parent=self.root)
+            return
+        if not messagebox.askyesno(
+            'Личная база Vkus',
+            'Включить сохранение истории поисков в ~/.vkus/demand.sqlite3?\\n\\n'
+            'База останется на этом компьютере и не будет отправляться в общую базу Vkus.',
+            parent=self.root,
+        ):
+            return
+        try:
+            self.demand_store = DemandStore()
+        except Exception as exc:
+            self.logger.exception('Could not enable local demand archive')
+            messagebox.showwarning('Личная база Vkus', 'Не удалось открыть базу: ' + str(exc)[:400], parent=self.root)
+            return
+        self.settings['local_demand_storage_consent'] = 'yes'
+        self._save_persistent_state()
+        messagebox.showinfo('Личная база Vkus', 'Личный архив включён.', parent=self.root)
+
+    def _open_local_demand_archive(self):
+        """Open the local archive without enabling future collection."""
+        if self.archive_window is not None and self.archive_window.winfo_exists():
+            self.archive_window.deiconify()
+            self.archive_window.lift()
+            self._refresh_local_archive()
+            return
+        try:
+            if self.archive_store is None:
+                self.archive_store = DemandStore()
+        except Exception as exc:
+            self.logger.exception('Could not open local demand archive')
+            messagebox.showerror('Личный архив Vkus', 'Не удалось открыть базу данных:\\n' + str(exc)[:500], parent=self.root)
+            return
+
+        win = tk.Toplevel(self.root)
+        self.archive_window = win
+        win.title('Vkus — личный архив спроса')
+        win.geometry('1180x720')
+        win.minsize(900, 560)
+        win.configure(bg=BG)
+        win.protocol('WM_DELETE_WINDOW', lambda: (setattr(self, 'archive_window', None), win.destroy()))
+
+        header = tk.Frame(win, bg='#06152a')
+        header.pack(fill='x', padx=12, pady=(12, 8))
+        tk.Label(header, text='ЛИЧНЫЙ АРХИВ СПРОСА', bg='#06152a', fg=CYAN,
+                 font=('TkDefaultFont', 15, 'bold')).pack(anchor='w', padx=14, pady=(10, 2))
+        self.archive_summary = tk.Label(header, text='', bg='#06152a', fg=MUTED,
+                                        font=('TkDefaultFont', 9))
+        self.archive_summary.pack(anchor='w', padx=14, pady=(0, 10))
+
+        style = ttk.Style(win)
+        try:
+            style.theme_use('clam')
+        except Exception:
+            pass
+        # Dark neon theme: explicitly style normal, active and selected states.
+        style.configure('VkusArchive.Treeview', background='#071426', foreground='#e7f0ff',
+                        fieldbackground='#071426', rowheight=34, borderwidth=0,
+                        relief='flat', font=('DejaVu Sans', 9))
+        style.map('VkusArchive.Treeview',
+                  background=[('selected', '#173d78')],
+                  foreground=[('selected', '#ffffff')])
+        style.configure('VkusArchive.Treeview.Heading', background='#102d56',
+                        foreground='#35ddff', relief='flat',
+                        font=('DejaVu Sans', 8, 'bold'), padding=(10, 10))
+        style.map('VkusArchive.Treeview.Heading',
+                  background=[('active', '#1b477c')],
+                  foreground=[('active', '#ffffff')])
+        style.configure('VkusArchive.TNotebook', background='#030817',
+                        borderwidth=0, tabmargins=(3, 5, 3, 0))
+        style.configure('VkusArchive.TNotebook.Tab', background='#0a1b34',
+                        foreground='#9db4d9', padding=(18, 10),
+                        font=('DejaVu Sans', 8, 'bold'), borderwidth=0)
+        style.map('VkusArchive.TNotebook.Tab',
+                  background=[('selected', '#12376b'), ('active', '#102b52')],
+                  foreground=[('selected', '#38ddff'), ('active', '#ffffff')])
+        style.configure('VkusArchive.Vertical.TScrollbar', troughcolor='#030817',
+                        background='#173d70', bordercolor='#030817',
+                        arrowcolor='#38ddff', relief='flat', borderwidth=0, width=11)
+        style.configure('VkusArchive.Horizontal.TScrollbar', troughcolor='#030817',
+                        background='#173d70', bordercolor='#030817',
+                        arrowcolor='#38ddff', relief='flat', borderwidth=0, width=11)
+        style.map('VkusArchive.Vertical.TScrollbar',
+                  background=[('active', '#2862a8')])
+        style.map('VkusArchive.Horizontal.TScrollbar',
+                  background=[('active', '#2862a8')])
+        notebook = ttk.Notebook(win, style='VkusArchive.TNotebook')
+        notebook.pack(fill='both', expand=True, padx=12, pady=(0, 10))
+        records_tab = tk.Frame(notebook, bg=BG)
+        history_tab = tk.Frame(notebook, bg=BG)
+        notebook.add(records_tab, text='НАЙДЕННЫЕ ЗАПИСИ')
+        notebook.add(history_tab, text='ИСТОРИЯ ПОИСКА')
+
+        filters = tk.Frame(records_tab, bg='#06152a')
+        filters.pack(fill='x', padx=4, pady=6)
+        self.archive_query_var = tk.StringVar()
+        self.archive_city_var = tk.StringVar()
+        self.archive_kind_var = tk.StringVar(value='Все типы')
+        tk.Label(filters, text='Поиск', bg='#06152a', fg=MUTED).pack(side='left', padx=(9, 4))
+        query_entry = tk.Entry(filters, textvariable=self.archive_query_var, bg='#0a1b34',
+                               fg=TEXT, insertbackground=CYAN, relief='flat', width=30)
+        query_entry.pack(side='left', padx=4, pady=9)
+        tk.Label(filters, text='Город', bg='#06152a', fg=MUTED).pack(side='left', padx=(8, 4))
+        city_entry = tk.Entry(filters, textvariable=self.archive_city_var, bg='#0a1b34',
+                              fg=TEXT, insertbackground=CYAN, relief='flat', width=18)
+        city_entry.pack(side='left', padx=4, pady=9)
+        tk.Label(filters, text='Тип', bg='#06152a', fg=MUTED).pack(side='left', padx=(8, 4))
+        kind_box = ttk.Combobox(filters, textvariable=self.archive_kind_var,
+                                values=('Все типы', 'post', 'comment'), state='readonly', width=12)
+        kind_box.pack(side='left', padx=4, pady=8)
+        tk.Button(filters, text='ФИЛЬТРОВАТЬ', command=self._refresh_local_archive,
+                  bg='#174aa1', fg='white', relief='flat', bd=0, padx=12, pady=6).pack(side='left', padx=7)
+        tk.Button(filters, text='СБРОСИТЬ', command=self._reset_local_archive_filters,
+                  bg='#10264b', fg=TEXT, relief='flat', bd=0, padx=10, pady=6).pack(side='left', padx=2)
+
+        table_frame = tk.Frame(records_tab, bg=BG)
+        table_frame.pack(fill='both', expand=True, padx=4, pady=(0, 4))
+        columns = ('kind', 'author', 'city', 'date', 'body')
+        self.archive_tree = ttk.Treeview(table_frame, columns=columns, show='headings',
+                                          selectmode='browse', style='VkusArchive.Treeview')
+        headings = {'kind': 'ТИП', 'author': 'АВТОР', 'city': 'ГОРОД', 'date': 'ДАТА', 'body': 'ТЕКСТ'}
+        widths = {'kind': 90, 'author': 150, 'city': 120, 'date': 135, 'body': 560}
+        for col in columns:
+            self.archive_tree.heading(col, text=headings[col])
+            self.archive_tree.column(col, width=widths[col], minwidth=65,
+                                     anchor='w', stretch=(col == 'body'))
+        yscroll = ttk.Scrollbar(table_frame, orient='vertical',
+                                 command=self.archive_tree.yview,
+                                 style='VkusArchive.Vertical.TScrollbar')
+        xscroll = ttk.Scrollbar(table_frame, orient='horizontal',
+                                command=self.archive_tree.xview,
+                                style='VkusArchive.Horizontal.TScrollbar')
+        self.archive_tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        self.archive_tree.grid(row=0, column=0, sticky='nsew')
+        yscroll.grid(row=0, column=1, sticky='ns')
+        xscroll.grid(row=1, column=0, sticky='ew')
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
+        self.archive_tree.bind('<<TreeviewSelect>>', self._show_archive_record_details)
+        self.archive_tree.bind('<Double-1>', lambda _e: self._open_selected_archive_link())
+
+        details = tk.Frame(records_tab, bg='#06152a')
+        details.pack(fill='x', padx=4, pady=(0, 5))
+        self.archive_detail = tk.Text(details, height=5, wrap='word', bg='#081a35',
+                                      fg='#dceaff', insertbackground=CYAN, relief='flat',
+                                      bd=0, padx=12, pady=10,
+                                      font=('DejaVu Sans', 9),
+                                      highlightthickness=1,
+                                      highlightbackground='#174078')
+        self.archive_detail.pack(fill='x', padx=9, pady=9)
+        self.archive_detail.configure(state='disabled')
+
+        actions = tk.Frame(records_tab, bg=BG)
+        actions.pack(fill='x', padx=4, pady=(0, 8))
+        tk.Button(actions, text='ОТКРЫТЬ ПУБЛИКАЦИЮ', command=self._open_selected_archive_link,
+                  bg='#123d78', fg=TEXT, relief='flat', bd=0, padx=13, pady=7).pack(side='left', padx=3)
+        tk.Button(actions, text='ОТКРЫТЬ ПРОФИЛЬ', command=self._open_selected_archive_profile,
+                  bg='#123d78', fg=TEXT, relief='flat', bd=0, padx=13, pady=7).pack(side='left', padx=3)
+        tk.Button(actions, text='УДАЛИТЬ ЗАПИСЬ', command=self._delete_selected_archive_record,
+                  bg='#64233a', fg='white', relief='flat', bd=0, padx=13, pady=7).pack(side='left', padx=3)
+        tk.Button(actions, text='ОБНОВИТЬ', command=self._refresh_local_archive,
+                  bg='#10264b', fg=TEXT, relief='flat', bd=0, padx=13, pady=7).pack(side='left', padx=3)
+
+        history_frame = tk.Frame(history_tab, bg=BG)
+        history_frame.pack(fill='both', expand=True, padx=5, pady=7)
+        history_cols = ('created', 'query', 'city', 'mode', 'count')
+        self.archive_history_tree = ttk.Treeview(history_frame, columns=history_cols,
+                                                 show='headings', selectmode='browse',
+                                                 style='VkusArchive.Treeview')
+        history_heads = {'created': 'ДАТА ПОИСКА', 'query': 'ЗАПРОС', 'city': 'ГОРОД',
+                         'mode': 'РЕЖИМ', 'count': 'СОХРАНЕНО'}
+        history_widths = {'created': 170, 'query': 430, 'city': 170, 'mode': 120, 'count': 110}
+        for col in history_cols:
+            self.archive_history_tree.heading(col, text=history_heads[col])
+            self.archive_history_tree.column(col, width=history_widths[col], anchor='w')
+        history_scroll = ttk.Scrollbar(history_frame, orient='vertical',
+                                        command=self.archive_history_tree.yview,
+                                        style='VkusArchive.Vertical.TScrollbar')
+        self.archive_history_tree.configure(yscrollcommand=history_scroll.set)
+        self.archive_history_tree.pack(side='left', fill='both', expand=True)
+        history_scroll.pack(side='right', fill='y')
+        self.archive_history_tree.bind('<Double-1>', lambda _e: self._show_selected_archive_run())
+        history_actions = tk.Frame(history_tab, bg=BG)
+        history_actions.pack(fill='x', padx=5, pady=(0, 8))
+        tk.Button(history_actions, text='ПОКАЗАТЬ РЕЗУЛЬТАТЫ ПОИСКА',
+                  command=self._show_selected_archive_run, bg='#174aa1', fg='white',
+                  relief='flat', bd=0, padx=14, pady=7).pack(side='left', padx=3)
+        tk.Button(history_actions, text='СБРОСИТЬ ФИЛЬТР ПО ИСТОРИИ',
+                  command=self._reset_local_archive_filters, bg='#10264b', fg=TEXT,
+                  relief='flat', bd=0, padx=14, pady=7).pack(side='left', padx=3)
+
+        self.archive_rows = {}
+        self._refresh_local_archive()
+        self._refresh_local_archive_history()
+        query_entry.focus_set()
+
+    def _archive_filters(self):
+        query = self.archive_query_var.get().strip()
+        city = self.archive_city_var.get().strip()
+        kind = self.archive_kind_var.get()
+        return query, ('' if kind == 'Все типы' else kind), city, getattr(self, '_archive_run_filter', '')
+
+    def _refresh_local_archive(self):
+        if self.archive_window is None or not self.archive_window.winfo_exists():
+            return
+        query, kind, city, run_id = self._archive_filters()
+        rows = self.archive_store.list_items(query=query, kind=kind, city=city, run_id=run_id, limit=1000)
+        total = self.archive_store.count_filtered(query=query, kind=kind, city=city, run_id=run_id)
+        self.archive_rows = {str(row['item_id']): row for row in rows}
+        self.archive_tree.delete(*self.archive_tree.get_children())
+        for row in rows:
+            body = ' '.join(str(row.get('body') or '').split())
+            if len(body) > 240:
+                body = body[:237] + '...'
+            author = row.get('author_name') or row.get('username') or '—'
+            item_id = str(row['item_id'])
+            self.archive_tree.insert('', 'end', iid=item_id,
+                values=(('КОММЕНТАРИЙ' if row.get('kind') == 'comment' else 'ПОСТ'),
+                        author, row.get('city') or '—',
+                        row.get('date_text') or row.get('last_seen_at') or '—', body),
+                tags=('comment' if row.get('kind') == 'comment' else 'post',))
+        self.archive_tree.tag_configure('post', foreground='#e5efff')
+        self.archive_tree.tag_configure('comment', foreground='#8fe7ff')
+        if hasattr(self, 'archive_summary'):
+            self.archive_summary.config(
+                text=f'Всего в личной базе: {self.archive_store.count_items()} · По фильтру: {total} · Показано: {len(rows)}'
+            )
+        self.archive_detail.configure(state='normal')
+        self.archive_detail.delete('1.0', 'end')
+        if not self.archive_tree.get_children():
+            self.archive_detail.insert('1.0',
+                'ПОКА НЕТ ВЫБРАННОЙ ЗАПИСИ\n'
+                'Выберите найденную публикацию в таблице выше — здесь появятся автор, '
+                'город, интерес, даты обнаружения, полный текст и ссылка.')
+        else:
+            self.archive_detail.insert('1.0',
+                'ВЫБЕРИТЕ ЗАПИСЬ\n'
+                'Нажмите на строку выше, чтобы открыть полную карточку публикации.')
+        self.archive_detail.configure(state='disabled')
+
+    def _refresh_local_archive_history(self):
+        if self.archive_window is None or not self.archive_window.winfo_exists():
+            return
+        self.archive_history_tree.delete(*self.archive_history_tree.get_children())
+        for run in self.archive_store.list_search_runs(300):
+            query = run.get('query') or '—'
+            self.archive_history_tree.insert('', 'end', iid=run['run_id'],
+                values=(run.get('created_at') or '—', query, run.get('city') or '—',
+                        run.get('mode') or '—', run.get('result_count', 0)))
+
+    def _show_archive_record_details(self, _event=None):
+        if self.archive_window is None or not self.archive_window.winfo_exists():
+            return
+        selection = self.archive_tree.selection()
+        if not selection:
+            return
+        row = self.archive_rows.get(selection[0])
+        if not row:
+            return
+        details = (
+            f"Автор: {row.get('author_name') or '—'}"
+            f"   Имя пользователя: {row.get('username') or '—'}"
+            f"   Город: {row.get('city') or '—'}\\n"
+            f"Тип: {row.get('kind') or '—'}   Интерес: {row.get('interest') or '—'}"
+            f"   Дата публикации: {row.get('date_text') or '—'}\\n"
+            f"Первое обнаружение: {row.get('first_seen_at') or '—'}"
+            f"   Последнее обнаружение: {row.get('last_seen_at') or '—'}\\n\\n"
+            f"{row.get('body') or ''}\\n\\n"
+            f"Ссылка: {row.get('source_url') or '—'}"
+        )
+        self.archive_detail.configure(state='normal')
+        self.archive_detail.delete('1.0', 'end')
+        self.archive_detail.insert('1.0', 'КАРТОЧКА НАЙДЕННОЙ ПУБЛИКАЦИИ\n' + details)
+        self.archive_detail.configure(state='disabled')
+
+    def _selected_archive_row(self):
+        if self.archive_window is None or not self.archive_window.winfo_exists():
+            return None
+        selection = self.archive_tree.selection()
+        return self.archive_rows.get(selection[0]) if selection else None
+
+    def _open_selected_archive_link(self):
+        row = self._selected_archive_row()
+        if not row:
+            messagebox.showinfo('Личный архив', 'Сначала выберите запись.', parent=self.archive_window)
+            return
+        url = row.get('source_url') or ''
+        if not url:
+            messagebox.showinfo('Личный архив', 'У этой записи нет ссылки на публикацию.', parent=self.archive_window)
+            return
+        if not url.startswith(('https://vk.ru/', 'https://vk.com/', 'http://vk.ru/', 'http://vk.com/')):
+            messagebox.showwarning('Личный архив', 'Ссылка не распознана как адрес VK.', parent=self.archive_window)
+            return
+        webbrowser.open(url)
+
+    def _open_selected_archive_profile(self):
+        row = self._selected_archive_row()
+        if not row:
+            messagebox.showinfo('Личный архив', 'Сначала выберите запись.', parent=self.archive_window)
+            return
+        url = row.get('profile_url') or ''
+        if not url:
+            messagebox.showinfo('Личный архив', 'У этой записи нет ссылки на профиль.', parent=self.archive_window)
+            return
+        if not url.startswith(('https://vk.ru/', 'https://vk.com/', 'http://vk.ru/', 'http://vk.com/')):
+            messagebox.showwarning('Личный архив', 'Ссылка не распознана как адрес VK.', parent=self.archive_window)
+            return
+        webbrowser.open(url)
+
+    def _delete_selected_archive_record(self):
+        row = self._selected_archive_row()
+        if not row:
+            messagebox.showinfo('Личный архив', 'Сначала выберите запись.', parent=self.archive_window)
+            return
+        if not messagebox.askyesno('Удаление записи', 'Удалить выбранную запись из личной базы?', parent=self.archive_window):
+            return
+        self.archive_store.delete_item(row['item_id'])
+        self._refresh_local_archive()
+        self._refresh_local_archive_history()
+
+    def _show_selected_archive_run(self):
+        if self.archive_window is None or not self.archive_window.winfo_exists():
+            return
+        selection = self.archive_history_tree.selection()
+        if not selection:
+            return
+        run_id = selection[0]
+        self._archive_run_filter = run_id
+        self.archive_query_var.set('')
+        self.archive_kind_var.set('Все типы')
+        self.archive_city_var.set('')
+        self._refresh_local_archive()
+
+    def _reset_local_archive_filters(self):
+        self._archive_run_filter = ''
+        self.archive_query_var.set('')
+        self.archive_kind_var.set('Все типы')
+        self.archive_city_var.set('')
+        self._refresh_local_archive()
+
     def _search_action(self):
         q = self.search_query_var.get().strip()
         region = self.region_var.get()
@@ -1457,6 +1849,7 @@ class VkusApp:
             self.results_count.config(text='Выберите сообщество')
             self._render_results([], status='ВЫБЕРИТЕ СООБЩЕСТВО VK')
             return
+        self._confirm_local_demand_storage()
         self.settings['search_community_url'] = community_url
         self.settings['search_community_name'] = community_name
         self._save_persistent_state()
@@ -1479,14 +1872,24 @@ class VkusApp:
                 found = self.browser.search_community_comments(community_url, q, city, region, year=year, month=month, limit=0)
             else:
                 found = self.browser.search_vk(q, city, region, mode=mode, limit=0, year=year, month=month)
-            self.root.after(0, lambda: self._search_finished(found, q, region, city, mode, generation))
+            saved_count = None
+            if self.demand_store is not None:
+                try:
+                    saved_count = self.demand_store.save_search_results(
+                        query=q, region=region, city=city, mode=mode, results=found
+                    )
+                except Exception:
+                    self.logger.exception('Could not archive VK search results locally')
+            self.root.after(0, lambda: self._search_finished(
+                found, q, region, city, mode, generation, saved_count
+            ))
 
         except Exception as exc:
             detail = f'{type(exc).__name__}: {exc}'
             self.logger.exception('VK search failed')
             self.root.after(0, lambda d=detail, g=generation: self._search_failed(d, g))
 
-    def _search_finished(self, found, q, region, city, mode, generation):
+    def _search_finished(self, found, q, region, city, mode, generation, saved_count=None):
         if generation is not None and generation != self._search_generation:
             return
         self._search_running = False
@@ -1501,7 +1904,9 @@ class VkusApp:
         ]
         self.settings['search_results_json'] = json.dumps(self.search_results, ensure_ascii=False)
         self._save_persistent_state()
-        self.results_count.config(text=f'{"Комментарии" if mode=="comments" else "Посты"}: {len(self.search_results)}')
+        result_label = "Комментарии" if mode == "comments" else "Посты"
+        archive_label = f" · личная база: {saved_count}" if saved_count is not None else ""
+        self.results_count.config(text=f'{result_label}: {len(self.search_results)}{archive_label}')
         self._render_results(self.search_results)
         if hasattr(self, 'log'):
             self.log.insert('end', f'[{datetime.now():%H:%M:%S}] VK поиск завершён: результатов={len(self.search_results)}\n')

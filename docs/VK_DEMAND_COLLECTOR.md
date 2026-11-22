@@ -1,58 +1,72 @@
-# VK public-demand collector (experimental)
+# VK selected-content importer
 
-This adapter reuses the existing `BrowserManager` and persistent Firefox profile. It is an opt-in collector, not a replacement for the existing VK search UI.
+This adapter normalizes VK posts/comments that the user has explicitly selected and exported into a local JSON file. It does **not** automate VK browsing or scrape search results.
 
-## Scope and safeguards
-- Searches only results visible through the authenticated Firefox session and VK's public search interface.
-- Does not access private communities/content, bypass login or access controls, send messages, invite users, or perform account actions.
-- Manual VK login remains in the existing Firefox profile when needed.
-- Search results are normalized into the Vkus external-demand schema.
-- Intent classification is deliberately conservative: only clear request/offer phrases are labeled; ambiguous records remain `unknown` and go to review.
-- Default mode is dry-run. No data is uploaded unless `--upload` is passed.
-- The collector never receives or stores the Supabase service-role key.
+## Why this is manual for now
 
-## Run from the Q322 repository root
-Install the existing project dependencies, make sure Firefox and geckodriver are available, then run:
+VK's published platform/API rules include restrictions on automated collection and on commercial transfer, resale, analytics or scoring using user data without VK's express permission. A third-party mirror of the API rules reproduces these restrictions; the official VK developer schema points to VK's rules as the API terms. Until Vkus has explicit permission for the intended commercial use, do not enable automated collection or upload VK-derived personal data into the shared demand database.
 
-```bash
-python -m vkus.vk_demand_collector --query "ищу мастера" --city "Орск" --region "Оренбургская область" --limit 30 --json-out vk_review.json
+Sources:
+- VK developer schema references the API terms: https://github.com/VKCOM/vk-api-schema/blob/master/apps/methods.json
+- Rules text mirror (verify current wording with VK before relying on it): https://mb4.ru/social-network/vk/1077-vk-dev-rules.html
+
+## Input format
+
+Prepare a JSON file containing only items you are authorized to process. The file may be a JSON array or an object with an `items` array. Each item can contain:
+
+- `url`: original public VK post URL (`https://vk.ru/...` or `https://vk.com/...`)
+- `text` or `comment_text`: selected text
+- `kind`: `post` or `comment`
+- `author_name` or `username`: optional visible author label
+- `date_ts`: optional Unix timestamp in milliseconds
+
+Example:
+
+```json
+{
+  "items": [
+    {
+      "url": "https://vk.ru/wall-123_456",
+      "text": "Ищу мастера для ремонта стиральной машины",
+      "kind": "post",
+      "author_name": "Имя автора",
+      "date_ts": 1795300000000
+    }
+  ]
+}
 ```
 
-To search comments:
+## Normalize and review
+
+From the Q322 repository root:
 
 ```bash
-python -m vkus.vk_demand_collector --query "нужен ремонт" --mode comments --city "Орск" --limit 20
+python -m vkus.vk_demand_collector --input-json vk_selected.json --city "Орск" --region "Оренбургская область" --json-out vk_review.json
 ```
 
-The first run may open Firefox for manual VK login. The collector uses the same persistent profile as Vkus (`~/.vkus/firefox_profile`).
+Default behavior is review-only. The importer deduplicates records and applies conservative phrase rules. Heuristic confidence is 0.68, below the backend's 0.70 activation threshold, so these records remain in `review` instead of being auto-activated.
 
-## Upload configuration
-Upload is disabled until the VK source is approved in the Vkus backend and a collector token has been issued. Set these environment variables only on the machine running the collector:
+## Backend upload
+
+Upload requires `--upload` and all three environment variables on the machine running the importer:
 
 - `VKUS_SUPABASE_URL` — Supabase project URL.
 - `VKUS_SOURCE_ID` — approved source UUID.
 - `VKUS_COLLECTOR_TOKEN` — opaque collector token; never commit it or place it in source code.
 
-Then run with `--upload`:
+The backend independently checks the token hash, source binding, revocation state, source enabled state, and terms-review timestamp. The current VK source remains disabled and has no terms-review timestamp; upload is intentionally rejected. No token has been issued.
 
-```bash
-python -m vkus.vk_demand_collector --query "ищу мастера" --city "Орск" --region "Оренбургская область" --limit 30 --upload
-```
+The service-role key is never used by this importer. It remains server-side in the Supabase Edge Function.
 
-The server checks the token hash, source binding, revocation state, source enabled state, and terms-review timestamp. The source currently remains disabled pending review; upload will be rejected until that gate is completed. Do not mark terms reviewed without checking the current VK terms and the intended collection scope.
+## Backend and files
 
-Backend migration source is tracked at `supabase/migrations/20261122_vk_collector_auth.sql`; the matching schema and Edge Function changes have already been applied to the connected Supabase project. The migration assumes the base Vkus demand-engine tables already exist.
+- `supabase/migrations/20261122_vk_collector_auth.sql` records the collector-token schema and source registration.
+- The corresponding schema and Edge Function changes are applied to the connected Supabase project.
+- `tests/test_vk_demand_collector.py` covers intent classification and normalization. It does not test VK collection or backend upload.
 
-## Current limitations
-- The existing Selenium DOM extraction is reused; VK can change its page structure and selectors. Real live VK extraction has not yet been validated after this adapter was added.
-- Region/city are supplied as explicit command-line filters; this adapter does not infer a user's location from their profile.
-- Intent classification is rule-based, not an ML classifier. Confidence 0.68 means a strong phrase match, not a guarantee that a person is a buyer.
-- Author label is included only when exposed in the visible search result. No email, phone, or private contact details are collected.
-- This is a collector module/CLI, not yet wired into a new desktop UI control.
+## Not implemented
 
-## Test
-```bash
-python -m unittest discover -s tests -p 'test_vk_demand_collector.py' -v
-```
-
-The tests cover intent classification and normalization only. They do not test live Firefox, VK login, DOM selectors, network connectivity, or backend ingestion.
+- Automated VK scraping/browser collection: intentionally withheld pending express permission from VK for this commercial use.
+- Live VK/Firefox DOM validation.
+- Upload to Supabase: blocked until the source is formally approved and enabled.
+- Desktop UI integration: not yet wired into a new Vkus control.

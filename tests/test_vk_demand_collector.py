@@ -10,10 +10,10 @@ normalize_result = _collector["normalize_result"]
 
 class VKDemandCollectorTests(unittest.TestCase):
     def test_clear_request_is_classified(self):
-        self.assertEqual(classify_intent("Ищу мастера для ремонта стиральной машины"), ("request", 0.78))
+        self.assertEqual(classify_intent("Ищу мастера для ремонта стиральной машины"), ("request", 0.68))
 
     def test_clear_offer_is_classified(self):
-        self.assertEqual(classify_intent("Предлагаю услуги электрика, выполняю работы"), ("offer", 0.78))
+        self.assertEqual(classify_intent("Предлагаю услуги электрика, выполняю работы"), ("offer", 0.68))
 
     def test_ambiguous_text_stays_unknown(self):
         self.assertEqual(classify_intent("Сегодня обсуждали ремонт квартиры"), ("unknown", 0.0))

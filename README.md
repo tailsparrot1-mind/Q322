@@ -203,7 +203,7 @@ Q322/
 
 - Панель фильтров переносит город и кнопки поиска на вторую строку в компактном окне; кнопка «СБРОСИТЬ» остаётся внутри панели.
 - UI smoke устанавливает и проверяет точную геометрию окна, снимает отдельные скриншоты 1920×1080 и 1366×768, проверяет поиск по Enter и сброс фильтров.
-- GitHub Actions run [45057878686](https://github.com/tailsparrot1-mind/Q322/actions/runs/45057878686): compile/source ZIP и Marketplace UI smoke — PASS.
+- GitHub Actions run [45057878686](https://github.com/tailsparrot1-mind/Q322/actions/runs/45057878686): compile/source ZIP, Marketplace UI smoke и License Store WebView smoke — PASS.
 - Артефакты скриншотов и исходного ZIP находятся в указанном run. Синтетическая карточка используется только для UI smoke.
 - Это не подтверждает живую авторизацию, публикации Supabase или запуск на Kali/VMware.
 - Подробный отчёт: [REPORT_Vkus_Marketplace_Responsive_2026-11-22.md](docs/REPORT_Vkus_Marketplace_Responsive_2026-11-22.md).

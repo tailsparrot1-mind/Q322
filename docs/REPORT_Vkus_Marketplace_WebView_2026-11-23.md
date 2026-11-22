@@ -44,3 +44,13 @@ Workflow `marketplace-ui-smoke` теперь устанавливает WebKitGT
 - `vkus/exchange_marketplace.py`
 - `.github/scripts/smoke_marketplace.py`
 - `.github/workflows/python-syntax.yml`
+
+## Повторный технический аудит перед запуском CI
+
+- Подтверждено по официальной документации tkwry 0.1.9: `@web.rpc("name")` и `window.tkwry.invoke(name, data)` являются корректной парой; WebView `app=` обслуживает локальные HTML/CSS/JS без localhost. Источник: https://github.com/mashu3/tkwry/blob/main/docs/rpc.md.
+- Подтверждено, что Linux-установка tkwry не имеет PyPI wheel и собирается из sdist; нужны Rust toolchain, WebKitGTK 4.1 и GTK 3. Эти зависимости присутствуют в `install.sh` и добавлены в Marketplace CI. Источники: https://pypi.org/project/tkwry/0.1.9/ и https://github.com/mashu3/tkwry.
+- Повторно проверены `vkus/marketplace_web.py`, `index.html`, `styles.css`, `app.js`, `.github/scripts/smoke_marketplace.py`, `requirements.txt`, `install.sh` и `vkus/app.py`: точка входа приложения сохраняет host frame, а host содержит `_marketplace_webview`; RPC-обработчики используют API, задокументированный tkwry.
+- CI smoke использует подменный `SupabaseMarketplaceClient`; он проверяет интерфейс и RPC-связку, но не проверяет настоящие Supabase credentials, RLS, Storage или публикацию в общей базе.
+- Официальная документация tkwry помечает 0.1.9 как Alpha; Linux обозначен как best-effort source install. Поэтому целевая проверка Kali/VMware обязательна даже при зелёном GitHub Actions.
+
+На этом commit запускается новый workflow через push в `main`; результат и скриншоты должны быть проверены отдельно. Не считать проверку успешной до просмотра статуса Actions и артефактов.

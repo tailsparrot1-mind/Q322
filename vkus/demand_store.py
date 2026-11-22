@@ -30,10 +30,17 @@ def _value(item: dict[str, Any], *keys: str, default: str = "") -> str:
     return default
 
 
-def _external_key(item: dict[str, Any]) -> str:
+def _normal_kind(value: str) -> str:
+    value = (value or '').strip().lower()
+    if value in ('comment', 'comments', 'reply'):
+        return 'comment'
+    return 'post'
+
+
+def _external_key(item: dict[str, Any], default_kind: str = 'post') -> str:
     body = " ".join(_value(item, "comment_text", "text").lower().split())
     url = _value(item, "post_url", "url")
-    kind = _value(item, "kind", default="post").lower()
+    kind = _normal_kind(_value(item, "kind", default=default_kind))
     return hashlib.sha256(f"vk\x1f{kind}\x1f{url}\x1f{body}".encode("utf-8")).hexdigest()
 
 
@@ -154,8 +161,8 @@ class DemandStore:
                 body = _value(item, "comment_text", "text")
                 if not body:
                     continue
-                key = _external_key(item)
-                kind = _value(item, "kind", default=mode or "post")
+                kind = _normal_kind(_value(item, "kind", default=mode or "post"))
+                key = _external_key(item, default_kind=kind)
                 source_url = _value(item, "post_url", "url")
                 conn.execute(
                     """INSERT INTO demand_items

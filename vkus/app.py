@@ -1527,6 +1527,18 @@ class VkusApp:
                                         font=('TkDefaultFont', 9))
         self.archive_summary.pack(anchor='w', padx=14, pady=(0, 10))
 
+        style = ttk.Style(win)
+        try:
+            style.theme_use('clam')
+        except Exception:
+            pass
+        style.configure('Treeview', background='#071426', foreground=TEXT,
+                        fieldbackground='#071426', rowheight=27, borderwidth=0)
+        style.map('Treeview', background=[('selected', '#174aa1')], foreground=[('selected', 'white')])
+        style.configure('Treeview.Heading', background='#0b2a50', foreground=CYAN,
+                        relief='flat', font=('TkDefaultFont', 8, 'bold'))
+        style.configure('TNotebook', background=BG, borderwidth=0)
+        style.configure('TNotebook.Tab', background='#0a1b34', foreground=TEXT, padding=(14, 8))
         notebook = ttk.Notebook(win)
         notebook.pack(fill='both', expand=True, padx=12, pady=(0, 10))
         records_tab = tk.Frame(notebook, bg=BG)
@@ -1705,6 +1717,9 @@ class VkusApp:
         if not url:
             messagebox.showinfo('Личный архив', 'У этой записи нет ссылки на публикацию.', parent=self.archive_window)
             return
+        if not url.startswith(('https://vk.ru/', 'https://vk.com/', 'http://vk.ru/', 'http://vk.com/')):
+            messagebox.showwarning('Личный архив', 'Ссылка не распознана как адрес VK.', parent=self.archive_window)
+            return
         webbrowser.open(url)
 
     def _open_selected_archive_profile(self):
@@ -1715,6 +1730,9 @@ class VkusApp:
         url = row.get('profile_url') or ''
         if not url:
             messagebox.showinfo('Личный архив', 'У этой записи нет ссылки на профиль.', parent=self.archive_window)
+            return
+        if not url.startswith(('https://vk.ru/', 'https://vk.com/', 'http://vk.ru/', 'http://vk.com/')):
+            messagebox.showwarning('Личный архив', 'Ссылка не распознана как адрес VK.', parent=self.archive_window)
             return
         webbrowser.open(url)
 
@@ -1737,10 +1755,10 @@ class VkusApp:
             return
         run_id = selection[0]
         self._archive_run_filter = run_id
-        self._refresh_local_archive()
         self.archive_query_var.set('')
         self.archive_kind_var.set('Все типы')
         self.archive_city_var.set('')
+        self._refresh_local_archive()
 
     def _reset_local_archive_filters(self):
         self._archive_run_filter = ''

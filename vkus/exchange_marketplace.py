@@ -1274,6 +1274,8 @@ def open_cloud_marketplace_window(parent):
     win._marketplace_reset_button = reset_button
     win._marketplace_filters_panel = filters_shell
     win._marketplace_cards_frame = cards_frame
+    win._marketplace_actions_frame = actions
+    win._marketplace_cards_canvas = cards_canvas
     win._marketplace_refresh = refresh
     win._marketplace_gate = gate
     if client.is_authenticated:

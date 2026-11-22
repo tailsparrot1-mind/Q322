@@ -90,6 +90,8 @@ class DemandStoreTests(unittest.TestCase):
                                       mode="comments", results=[second])
             self.assertEqual(store.count_filtered(query="электрик"), 1)
             self.assertEqual(store.count_filtered(kind="comment"), 1)
+            self.assertEqual(store.list_items(kind="post")[0]["kind"], "post")
+            self.assertEqual(store.list_items(kind="comment")[0]["kind"], "comment")
             self.assertEqual(store.count_filtered(city="Орск"), 1)
             runs = store.list_search_runs()
             self.assertEqual(len(runs), 2)

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Vkus — Marketplace</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Vkus Marketplace">
+        <span class="brand-mark">V</span><span><b>VKUS</b><small>MARKETPLACE</small></span>
+      </a>
+      <label class="global-search"><span class="search-icon">⌕</span>
+        <input id="search" type="search" placeholder="Что вы ищете?" autocomplete="off">
+        <button id="searchGo" aria-label="Найти">↵</button>
+      </label>
+      <div class="top-actions">
+        <button class="icon-button" id="inboxOpen" title="Отклики">▤</button>
+        <button class="icon-button" id="profileOpen" title="Профиль">◎</button>
+        <span class="user-avatar" id="avatar">V</span>
+      </div>
+    </header>
+
+    <section class="hero-row">
+      <div><p class="eyebrow">ОБЪЯВЛЕНИЯ РЯДОМ С ВАМИ</p>
+        <h1>Найдите своё <span>лучшее предложение</span></h1>
+        <p class="hero-copy">Покупайте, продавайте, находите специалистов и публикуйте свои предложения.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="button button-quiet" id="sortButton">Сначала новые <span>⌄</span></button>
+        <button class="button button-pink" id="publishButton">＋ Разместить объявление</button>
+      </div>
+    </section>
+
+    <nav class="category-nav" id="categoryNav" aria-label="Категории">
+      <button class="category-chip active" data-category="Все категории">Все объявления</button>
+      <button class="category-chip" data-category="Услуги">Услуги</button>
+      <button class="category-chip" data-category="Товары">Товары</button>
+      <button class="category-chip" data-category="Работа">Работа</button>
+      <button class="category-chip" data-category="Подряд и задачи">Подряд и задачи</button>
+      <button class="category-chip" data-category="Аренда">Аренда</button>
+      <button class="category-chip" data-category="Покупка">Покупка</button>
+      <button class="category-chip" data-category="Продажа">Продажа</button>
+      <button class="category-chip" data-category="Другое">Ещё</button>
+    </nav>
+
+    <section class="filter-panel">
+      <div class="filter-heading"><span>ТОЧНЫЙ ПОИСК</span><button id="resetFilters">Сбросить фильтры ↺</button></div>
+      <div class="filter-grid">
+        <label class="field field-search"><span>Ключевые слова</span><input id="filterSearch" placeholder="Название или описание"></label>
+        <label class="field"><span>Тип объявления</span><select id="kind"><option>Все типы</option><option>Ищу</option><option>Предлагаю</option></select></label>
+        <label class="field"><span>Город</span><input id="city" placeholder="Любой город"></label>
+        <button class="button button-blue" id="applyFilters">Показать объявления <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="results-head">
+      <div><h2>Объявления рядом</h2><p id="resultCount">Загружаем предложения…</p></div>
+      <div class="view-tools"><span class="live-dot"></span><span>Общая база Vkus</span><button class="view-toggle active" title="Сетка">▦</button></div>
+    </section>
+
+    <section class="listing-grid" id="listingGrid" aria-live="polite">
+      <div class="loading-state"><span class="loader"></span><p>Загружаем объявления…</p></div>
+    </section>
+
+    <footer class="bottom-bar">
+      <span id="connectionState"><i class="live-dot"></i> Подключение к Marketplace</span>
+      <span id="accountState">Гостевой просмотр</span>
+      <button id="signOut" class="text-button hidden">Выйти из аккаунта</button>
+    </footer>
+  </main>
+
+  <div class="gate-backdrop" id="roleGate">
+    <section class="gate-card">
+      <div class="gate-logo"><span class="brand-mark">V</span><span><b>VKUS</b><small>MARKETPLACE</small></span></div>
+      <p class="eyebrow">ВАШИ ВОЗМОЖНОСТИ</p>
+      <h2>Как вы хотите использовать площадку?</h2>
+      <p class="gate-subtitle">Выберите роль — она поможет настроить ваш опыт на маркетплейсе.</p>
+      <div class="role-options">
+        <button class="role-option" data-role="Соискатель"><span class="role-icon cyan">⌕</span><b>Ищу товар или услугу</b><small>Найти предложение, специалиста или исполнителя</small><span class="role-arrow">→</span></button>
+        <button class="role-option" data-role="Рекламодатель"><span class="role-icon pink">＋</span><b>Размещаю предложения</b><small>Публиковать товары, услуги и объявления</small><span class="role-arrow">→</span></button>
+      </div>
+      <p class="gate-note">Можно просматривать объявления без входа. Для публикации и откликов понадобится аккаунт.</p>
+      <button class="guest-button" id="continueGuest">Продолжить без входа</button>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="authModal">
+    <section class="modal-card auth-card">
+      <button class="modal-close" data-close="authModal">×</button>
+      <p class="eyebrow">АККАУНТ VKUS</p><h2 id="authTitle">Войти в Marketplace</h2>
+      <p class="muted" id="authRoleHint"></p>
+      <label class="field"><span>Email</span><input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com"></label>
+      <label class="field"><span>Пароль</span><input id="authPassword" type="password" autocomplete="current-password" placeholder="Не менее 8 символов"></label>
+      <p class="form-error" id="authError"></p>
+      <button class="button button-blue full" id="authSubmit">Войти</button>
+      <button class="switch-auth" id="authSwitch">Нет аккаунта? Зарегистрироваться</button>
+      <button class="guest-button" id="authBack">← Назад к выбору роли</button>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="listingModal">
+    <section class="modal-card large-modal">
+      <button class="modal-close" data-close="listingModal">×</button>
+      <p class="eyebrow">НОВОЕ ОБЪЯВЛЕНИЕ</p><h2 id="listingModalTitle">Разместить объявление</h2>
+      <div class="form-two">
+        <label class="field"><span>Что вы делаете?</span><select id="listingKind"><option>Предлагаю</option><option>Ищу</option></select></label>
+        <label class="field"><span>Категория</span><select id="listingCategory"><option>Товары</option><option>Услуги</option><option>Работа</option><option>Подряд и задачи</option><option>Аренда</option><option>Покупка</option><option>Продажа</option><option>Другое</option></select></label>
+      </div>
+      <label class="field"><span>Заголовок</span><input id="listingTitle" maxlength="120" placeholder="Например: Ремонт квартир под ключ"></label>
+      <label class="field"><span>Описание</span><textarea id="listingDescription" maxlength="5000" rows="4" placeholder="Опишите предложение или задачу подробнее"></textarea></label>
+      <div class="form-three">
+        <label class="field"><span>Город</span><input id="listingCity" maxlength="80" placeholder="Оренбург"></label>
+        <label class="field"><span>Цена / бюджет</span><input id="listingPrice" inputmode="decimal" placeholder="От 2 500"></label>
+        <label class="field"><span>Валюта</span><select id="listingCurrency"><option>RUB</option><option>EUR</option><option>USD</option></select></label>
+      </div>
+      <label class="field"><span>Контакт</span><input id="listingContact" placeholder="Телефон, ссылка или ник"></label>
+      <p class="form-error" id="listingError"></p>
+      <button class="button button-pink full" id="listingSave">Опубликовать</button>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="detailModal">
+    <section class="modal-card large-modal">
+      <button class="modal-close" data-close="detailModal">×</button>
+      <div id="detailContent"></div>
+      <div class="detail-actions" id="detailActions"></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="profileModal">
+    <section class="modal-card auth-card">
+      <button class="modal-close" data-close="profileModal">×</button>
+      <p class="eyebrow">ВАШ ПРОФИЛЬ</p><h2>Данные аккаунта</h2>
+      <label class="field"><span>Имя или название организации</span><input id="profileName" maxlength="80"></label>
+      <label class="field"><span>Город</span><input id="profileCity" maxlength="80"></label>
+      <p class="form-error" id="profileError"></p>
+      <button class="button button-blue full" id="profileSave">Сохранить профиль</button>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="inboxModal">
+    <section class="modal-card large-modal">
+      <button class="modal-close" data-close="inboxModal">×</button>
+      <p class="eyebrow">ЦЕНТР ОТКЛИКОВ</p><h2>Входящие отклики</h2>
+      <div id="inboxList" class="inbox-list"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

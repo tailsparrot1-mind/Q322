@@ -6,9 +6,9 @@ not uploaded to Supabase and is not shared between Vkus installations.
 from __future__ import annotations
 
 import hashlib
-import json
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -51,8 +51,17 @@ class DemandStore:
         conn.execute("PRAGMA busy_timeout = 15000")
         return conn
 
+    @contextmanager
+    def _connection(self):
+        conn = self._connect()
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
     def _initialize(self) -> str:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS workspace_meta (
@@ -124,13 +133,13 @@ class DemandStore:
         run_id = str(uuid.uuid4())
         now = _utc_now()
         saved = 0
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """INSERT INTO search_runs
                    (run_id, workspace_id, query, region, city, mode, result_count, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, 0, ?)""",
                 (run_id, self.workspace_id, query.strip(), region.strip(), city.strip(),
-                 mode.strip() or "posts", len(items), now),
+                 mode.strip() or "posts", now),
             )
             for item in items:
                 body = _value(item, "comment_text", "text")
@@ -176,6 +185,7 @@ class DemandStore:
                         (run_id, int(row["item_id"])),
                     )
                     saved += 1
+            conn.execute("UPDATE search_runs SET result_count = ? WHERE run_id = ?", (saved, run_id))
         return saved
 
     def count_items(self) -> int:

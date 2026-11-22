@@ -18,6 +18,7 @@ from vkus.check_runner import CheckRunner, CheckResult
 from vkus.storage import load_settings, save_settings, setup_logging
 from vkus.lock_screen import LockScreen
 from vkus.license_store import LICENSE_STORE_URL
+from vkus.demand_store import DemandStore
 
 try:
     from PIL import Image, ImageTk, ImageEnhance
@@ -112,6 +113,7 @@ class VkusApp:
         self.root.minsize(1000, 620)
         self.root.configure(bg=BG)
         self.settings = load_settings()
+        self.demand_store = None
         self.logger = setup_logging()
         self.browser = BrowserManager(self.logger)
         self.checks = build_checks(self.browser, self.settings, self.logger)
@@ -1427,6 +1429,35 @@ class VkusApp:
         win.protocol('WM_DELETE_WINDOW', lambda: (win.grab_release(), win.destroy(), setattr(self, 'community_picker', None)))
         entry.focus_set()
 
+    def _confirm_local_demand_storage(self):
+        """Ask once before creating a persistent, private local search archive."""
+        consent = str(self.settings.get('local_demand_storage_consent', '')).lower()
+        if consent not in ('yes', 'no'):
+            consent = 'yes' if messagebox.askyesno(
+                'Личная база Vkus',
+                'Сохранять результаты поисков VK в личную базу на этом компьютере?\\n\\n'
+                'База будет находиться в ~/.vkus/demand.sqlite3, не будет отправляться '
+                'в общую базу Vkus и останется в профиле текущего пользователя.',
+                parent=self.root,
+            ) else 'no'
+            self.settings['local_demand_storage_consent'] = consent
+            self._save_persistent_state()
+        if consent != 'yes':
+            return False
+        if self.demand_store is None:
+            try:
+                self.demand_store = DemandStore()
+            except Exception as exc:
+                self.logger.exception('Could not initialize local demand archive')
+                messagebox.showwarning(
+                    'Личная база Vkus',
+                    'Не удалось открыть локальную базу. Поиск продолжится, но архивирование отключено.\\n\\n'
+                    + str(exc)[:500],
+                    parent=self.root,
+                )
+                return False
+        return True
+
     def _search_action(self):
         q = self.search_query_var.get().strip()
         region = self.region_var.get()
@@ -1500,8 +1531,18 @@ class VkusApp:
             for item in found
         ]
         self.settings['search_results_json'] = json.dumps(self.search_results, ensure_ascii=False)
+        saved_count = 0
+        if self.demand_store is not None:
+            try:
+                saved_count = self.demand_store.save_search_results(
+                    query=q, region=region, city=city, mode=mode, results=found
+                )
+            except Exception:
+                self.logger.exception('Could not archive VK search results locally')
         self._save_persistent_state()
-        self.results_count.config(text=f'{"Комментарии" if mode=="comments" else "Посты"}: {len(self.search_results)}')
+        result_label = "Комментарии" if mode == "comments" else "Посты"
+        archive_label = f" · личная база: {saved_count}" if self.demand_store is not None else ""
+        self.results_count.config(text=f'{result_label}: {len(self.search_results)}{archive_label}')
         self._render_results(self.search_results)
         if hasattr(self, 'log'):
             self.log.insert('end', f'[{datetime.now():%H:%M:%S}] VK поиск завершён: результатов={len(self.search_results)}\n')

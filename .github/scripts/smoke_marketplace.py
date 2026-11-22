@@ -75,7 +75,6 @@ class SmokeMarketplaceClient:
         if city:
             fixtures = [row for row in fixtures
                         if city.casefold() in row["city"].casefold()]
-        print(f"SMOKE_FIXTURE_COUNT={len(fixtures)} kind={kind!r} category={category!r} city={city!r} search={search!r}")
         return fixtures
 
 
@@ -137,6 +136,11 @@ app.root.update_idletasks()
 app.root.update()
 page = app.marketplace_page
 assert not page._marketplace_gate.winfo_ismapped(), "Authenticated user should see the board"
+# Each smoke run starts from a deterministic unfiltered board, even if a
+# developer profile or a prior UI session left filter values populated.
+page._marketplace_reset_button.invoke()
+app.root.update_idletasks()
+app.root.update()
 cards = page._marketplace_cards_frame
 assert len(cards.winfo_children()) == 7, (
     f"Expected seven smoke fixture cards, got {len(cards.winfo_children())}"

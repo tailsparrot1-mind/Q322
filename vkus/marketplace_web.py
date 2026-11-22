@@ -38,7 +38,6 @@ def open_marketplace_webview(parent):
         host,
         app=assets,
         user_agent="VkusMarketplace/1.0",
-        background_color="#030817",
         devtools=False,
     )
     web.when_failed(fail)

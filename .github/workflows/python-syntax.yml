@@ -73,3 +73,26 @@ jobs:
           name: Vkus-Q322-license-store-webview
           path: artifacts/*
           if-no-files-found: warn
+
+  personal-archive-ui-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tk and virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk python3-venv xvfb
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install app runtime dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install Pillow selenium keyring
+      - name: Launch archive UI and test filters/history/delete
+        run: xvfb-run -a .venv/bin/python .github/scripts/smoke_demand_archive.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vkus-personal-archive-ui
+          path: artifacts/vkus-personal-archive-window.png
+          if-no-files-found: error

@@ -5,7 +5,6 @@ ownership checks and CRUD stay in the existing Python client.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox

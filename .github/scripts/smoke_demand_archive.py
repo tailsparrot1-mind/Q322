@@ -65,7 +65,13 @@ def main():
 
         output = Path("artifacts")
         output.mkdir(exist_ok=True)
-        ImageGrab.grab().save(output / "vkus-personal-archive-window.png")
+        app.archive_window.lift()
+        app.archive_window.attributes("-topmost", True)
+        app.archive_window.update_idletasks()
+        app.archive_window.update()
+        x, y = app.archive_window.winfo_rootx(), app.archive_window.winfo_rooty()
+        w, h = app.archive_window.winfo_width(), app.archive_window.winfo_height()
+        ImageGrab.grab(bbox=(x, y, x + w, y + h)).save(output / "vkus-personal-archive-window.png")
         print("Personal archive UI smoke passed: list, filters, search history, delete.")
     finally:
         app.close()

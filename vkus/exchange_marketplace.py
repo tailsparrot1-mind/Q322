@@ -1106,6 +1106,12 @@ def open_cloud_marketplace_window(parent):
     gate_canvas.bind("<Motion>", update_gate_cursor)
     gate._canvas, gate._hit_regions = gate_canvas, gate_regions
     win._marketplace_gate_canvas, win._marketplace_gate_layout = gate_canvas, gate_regions
+    # Stable handles for the repository's UI smoke test; normal users interact
+    # with the same visible controls and callbacks.
+    win._marketplace_search_entry = query_entry
+    win._marketplace_cards_frame = cards_frame
+    win._marketplace_refresh = refresh
+    win._marketplace_gate = gate
     if client.is_authenticated:
         saved_role = (client.session.user.get("user_metadata") or {}).get("marketplace_role")
         if saved_role in ("Соискатель", "Рекламодатель"):

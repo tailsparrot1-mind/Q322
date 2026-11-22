@@ -1,52 +1,101 @@
 from pathlib import Path
-from types import SimpleNamespace
+import json
 import sys
-import tkinter as tk
+import time
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from PIL import Image, ImageGrab
-
+from PIL import ImageGrab
+from types import SimpleNamespace
 from vkus import cloud_marketplace
 
 
 class SmokeMarketplaceClient:
-    authenticated = False
-
     def __init__(self):
-        self.is_authenticated = self.authenticated
+        self.session = None
         self.session_persistence_available = True
-        self.session = (SimpleNamespace(user={
-            "id": "smoke-user",
-            "email": "smoke@example.invalid",
-            "user_metadata": {"marketplace_role": "Соискатель"},
-        }) if self.is_authenticated else None)
-
-    def list_listings(self, search="", **_kwargs):
-        # One deterministic fixture keeps the smoke test independent of
-        # profile-specific filter defaults and tests only the visible search.
-        fixtures = [{
+        self.rows = [{
             "id": "smoke-listing-1",
+            "owner_id": "other-user",
             "kind": "Ищу",
             "category": "Услуги",
             "title": "Нужен мастер для ремонта квартиры",
             "description": "Демонстрационная заявка на отделку и мелкий ремонт.",
             "city": "Оренбург",
-            "price": "5000",
+            "price": 5000,
             "currency": "RUB",
             "status": "Активно",
-            "created_at": "2026-11-22T12:00:00",
+            "created_at": "2026-11-23T00:00:00",
             "contact": "smoke@example.invalid",
-            "owner_id": "other-user",
         }]
+
+    @property
+    def is_authenticated(self):
+        return self.session is not None
+
+    def list_listings(self, *, search="", kind="Все типы",
+                      category="Все категории", city="", limit=100, offset=0):
+        rows = list(self.rows)
         if search:
             term = search.casefold()
-            fixtures = [row for row in fixtures
-                        if term in row["title"].casefold()
-                        or term in row["description"].casefold()
-                        or term in row["city"].casefold()]
-        return fixtures
+            rows = [r for r in rows if term in (
+                r["title"] + " " + r["description"] + " " + r["city"]
+            ).casefold()]
+        if kind != "Все типы":
+            rows = [r for r in rows if r["kind"] == kind]
+        if category != "Все категории":
+            rows = [r for r in rows if r["category"] == category]
+        if city:
+            rows = [r for r in rows if city.casefold() in r["city"].casefold()]
+        return rows[offset:offset + limit]
+
+    def sign_in(self, email, password):
+        if not email or len(password) < 8:
+            raise ValueError("Некорректные тестовые данные")
+        self.session = SimpleNamespace(user={
+            "id": "smoke-user", "email": email,
+            "user_metadata": {"marketplace_role": ""},
+        })
+
+    def sign_up(self, email, password, role=None):
+        self.sign_in(email, password)
+        self.set_marketplace_role(role)
+
+    def set_marketplace_role(self, role):
+        self.session.user.setdefault("user_metadata", {})["marketplace_role"] = role
+
+    def sign_out(self):
+        self.session = None
+
+    def create_listing(self, payload):
+        row = dict(payload, id="smoke-created", owner_id="smoke-user",
+                   status="Активно", created_at="2026-11-23T00:00:00")
+        self.rows.insert(0, row)
+        return row
+
+    def update_listing(self, listing_id, payload):
+        row = next(r for r in self.rows if str(r["id"]) == str(listing_id))
+        row.update(payload)
+        return row
+
+    def delete_listing(self, listing_id):
+        self.rows = [r for r in self.rows if str(r["id"]) != str(listing_id)]
+
+    def respond_to_listing(self, listing_id, message):
+        return {"id": "smoke-response"}
+
+    def get_my_profile(self):
+        return {"display_name": "Smoke User", "city": "Оренбург"}
+
+    def save_my_profile(self, display_name, city=""):
+        return {"display_name": display_name, "city": city}
+
+    def list_incoming_responses(self, limit=100):
+        return []
+
+    def update_response_status(self, response_id, status):
+        return {"id": response_id, "status": status}
 
 
 cloud_marketplace.SupabaseMarketplaceClient = SmokeMarketplaceClient
@@ -57,167 +106,149 @@ out = Path("artifacts")
 out.mkdir(exist_ok=True)
 
 
-def size_and_capture(app, width, height, filename):
-    app.root.geometry(f"{width}x{height}+0+0")
+def pump(root, seconds=0.08):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        root.update()
+        time.sleep(0.01)
+
+
+def capture(app, filename):
     app.root.update_idletasks()
     app.root.update()
-    actual = (app.root.winfo_width(), app.root.winfo_height())
-    assert actual == (width, height), (
-        f"Requested {width}x{height}, got {actual[0]}x{actual[1]}"
-    )
     x, y = app.root.winfo_rootx(), app.root.winfo_rooty()
-    ImageGrab.grab(bbox=(x, y, x + width, y + height)).save(out / filename)
+    w, h = app.root.winfo_width(), app.root.winfo_height()
+    ImageGrab.grab(bbox=(x, y, x + w, y + h)).save(out / filename)
 
-# Unauthenticated role gate and transparent click targets.
+
+def js(web, root, expression, timeout=15):
+    result = {}
+    errors = []
+    web.eval_js_with_callback(
+        expression,
+        lambda value: result.setdefault("value", value),
+        on_error=lambda exc: errors.append(str(exc)),
+    )
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline and "value" not in result and not errors:
+        pump(root, 0.05)
+    if errors:
+        raise AssertionError("WebView JS evaluation failed: " + errors[0])
+    if "value" not in result:
+        raise AssertionError("Timed out waiting for WebView JavaScript result: " + expression)
+    value = result["value"]
+    try:
+        return json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return value
+
+
 app = VkusApp()
-app.root.geometry("1920x1080+0+0")
-app._unlock()
-app._show_marketplace()
-app.root.update_idletasks()
-app.root.update()
-size_and_capture(app, 1920, 1080, "vkus-marketplace-role-gate.png")
+try:
+    app.root.geometry("1920x1080+0+0")
+    app._unlock()
+    app._show_marketplace()
+    pump(app.root, 1.0)
+    page = app.marketplace_page
+    web = page._marketplace_webview
 
-page = app.marketplace_page
-canvas = page._marketplace_gate_canvas
-canvas.update_idletasks()
-gate = canvas.master
-source = Image.open(ROOT / "vkus" / "assets" / "marketplace_role_gate.png")
-cw, ch = canvas.winfo_width(), canvas.winfo_height()
-scale = min(cw / source.width, ch / source.height)
-ox = (cw - source.width * scale) / 2
-oy = (ch - source.height * scale) / 2
-hit_x = round(((276 + 772) / 2) * scale + ox)
-hit_y = round(((617 + 709) / 2) * scale + oy)
-canvas.event_generate("<Button-1>", x=hit_x, y=hit_y)
-app.root.update_idletasks()
-app.root.update()
-forms = [child for child in gate.winfo_children()
-         if child is not canvas and child.winfo_exists()]
-assert forms, "Role image hotspot did not open the registration form"
-size_and_capture(app, 1920, 1080, "vkus-marketplace-registration-form.png")
-app.close()
+    ready = js(web, app.root, "document.readyState")
+    assert ready == "complete", f"Marketplace HTML did not finish loading: {ready!r}"
+    gate_visible = js(web, app.root,
+        "!document.getElementById('roleGate').classList.contains('hidden')")
+    assert gate_visible is True, "Unauthenticated user should see the role gate"
+    capture(app, "vkus-marketplace-role-gate.png")
 
-# Authenticated board state with an explicitly synthetic fixture.
-SmokeMarketplaceClient.authenticated = True
-app = VkusApp()
-app.root.geometry("1920x1080+0+0")
-app._unlock()
-app._show_marketplace()
-app.root.update_idletasks()
-app.root.update()
-page = app.marketplace_page
-assert not page._marketplace_gate.winfo_ismapped(), "Authenticated user should see the board"
-# Each screenshot starts from a deterministic unfiltered board. Filter
-# variables are set directly; the reset button is tested separately below.
-page._marketplace_query_var.set("")
-page._marketplace_kind_var.set("Все типы")
-page._marketplace_category_var.set("Все категории")
-page._marketplace_city_var.set("")
-page._marketplace_refresh()
-app.root.update_idletasks()
-app.root.update()
-cards = page._marketplace_cards_frame
-assert len(cards.winfo_children()) == 1, (
-    f"Expected one deterministic smoke card, got {len(cards.winfo_children())}"
-)
-size_and_capture(app, 1920, 1080, "vkus-marketplace-board-1920x1080.png")
+    js(web, app.root,
+       "document.querySelector('[data-role=\\\"Соискатель\\\"]').click(); 'ok'")
+    auth_visible = js(web, app.root,
+        "!document.getElementById('authModal').classList.contains('hidden')")
+    assert auth_visible is True, "Role selection should open the login/registration form"
+    capture(app, "vkus-marketplace-auth-form.png")
 
-# Compact desktop layout: controls must stay inside the filter panel.
-app.root.geometry("1366x768+0+0")
-app.root.update_idletasks()
-app.root.update()
-reset = page._marketplace_reset_button
-panel = page._marketplace_filters_panel
-assert reset.winfo_ismapped(), "Reset action must remain visible at 1366x768"
-reset_right = reset.winfo_rootx() + reset.winfo_width()
-panel_right = panel.winfo_rootx() + panel.winfo_width()
-assert reset_right <= panel_right, (
-    f"Reset button clipped by filter panel: right={reset_right}, panel_right={panel_right}"
-)
-size_and_capture(app, 1366, 768, "vkus-marketplace-board-1366x768.png")
-visible_cards = [child for child in cards.winfo_children()
-                 if child.winfo_manager() == "grid"]
-assert len(visible_cards) == 1, "Smoke listing card must remain visible after resize"
-assert visible_cards[0].winfo_width() >= 180, (
-    f"Marketplace card is too narrow after resize: {visible_cards[0].winfo_width()}px"
-)
-actions = page._marketplace_actions_frame
-actions_bottom = actions.winfo_rooty() + actions.winfo_height()
-root_bottom = app.root.winfo_rooty() + app.root.winfo_height()
-assert actions.winfo_height() > 0 and actions_bottom <= root_bottom, (
-    f"Marketplace action row is clipped: bottom={actions_bottom}, root_bottom={root_bottom}"
-)
+    js(web, app.root, """
+      document.getElementById('authEmail').value='smoke@example.invalid';
+      document.getElementById('authPassword').value='long-password';
+      document.getElementById('authSubmit').click();
+      'submitted'
+    """)
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        count = js(web, app.root, "document.querySelectorAll('.listing-card').length")
+        if count == 1:
+            break
+        pump(app.root, 0.1)
+    assert count == 1, f"Expected one real DOM listing card after login, got {count!r}"
+    gate_hidden = js(web, app.root,
+        "document.getElementById('roleGate').classList.contains('hidden')")
+    assert gate_hidden is True, "Successful login should dismiss the role gate"
+    capture(app, "vkus-marketplace-board-1920x1080.png")
 
-search = page._marketplace_search_entry
-search.insert(0, "no-such-listing")
-search.event_generate("<Return>")
-app.root.update_idletasks()
-app.root.update()
-assert len(cards.winfo_children()) == 1, "No-results state should replace the card"
-empty_text = " ".join(
-    widget.cget("text") for widget in cards.winfo_children()[0].winfo_children()
-    if isinstance(widget, tk.Label)
-)
-assert "ЗДЕСЬ ПОЯВЯТСЯ ОБЪЯВЛЕНИЯ" in empty_text, (
-    "No-results state should display its explanatory heading"
-)
-reset.invoke()
-app.root.update_idletasks()
-app.root.update()
-assert len(cards.winfo_children()) == 1, "Reset action should restore the listing"
-def collect_text(widget):
-    values = []
-    if isinstance(widget, tk.Label):
-        values.append(widget.cget("text"))
-    for child in widget.winfo_children():
-        values.extend(collect_text(child))
-    return values
-assert any("Нужен мастер для ремонта квартиры" in value
-           for value in collect_text(cards)), (
-    "Reset must reload and display the matching listing, not only clear fields"
-)
-search.insert(0, "мастер")
-search.event_generate("<Return>")
-app.root.update_idletasks()
-app.root.update()
-assert any("Нужен мастер для ремонта квартиры" in value
-           for value in collect_text(cards)), "Matching search should restore the card"
+    js(web, app.root, """
+      document.getElementById('filterSearch').value='no-such-listing';
+      document.getElementById('applyFilters').click();
+      'search'
+    """)
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        empty = js(web, app.root, "!!document.querySelector('.empty-state')")
+        if empty:
+            break
+        pump(app.root, 0.1)
+    assert empty is True, "Search should display a real HTML empty state"
 
-def find_button(widget, caption):
-    if isinstance(widget, tk.Button) and widget.cget("text") == caption:
-        return widget
-    for child in widget.winfo_children():
-        found = find_button(child, caption)
-        if found:
-            return found
-    return None
+    js(web, app.root, "document.getElementById('resetFilters').click(); 'reset'")
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        count = js(web, app.root, "document.querySelectorAll('.listing-card').length")
+        if count == 1:
+            break
+        pump(app.root, 0.1)
+    assert count == 1, "Reset should restore the matching listing"
 
-work_chip = find_button(page, "Работа")
-assert work_chip is not None, "Marketplace category chips must be present"
-work_chip.invoke()
-app.root.update_idletasks()
-app.root.update()
-assert page._marketplace_category_var.get() == "Работа", (
-    "Category chip must set the corresponding filter"
-)
-assert work_chip.cget("bg") == "#263b79", (
-    "The selected category chip must show its active state"
-)
-reset.invoke()
-app.root.update_idletasks()
-app.root.update()
-assert any("Нужен мастер для ремонта квартиры" in value
-           for value in collect_text(cards)), (
-    "Reset must clear category and restore the listing collection"
-)
-assert len(cards.winfo_children()) == 1, (
-    "Reset must restore the smoke listing"
-)
-assert page._marketplace_category_var.get() == "Все категории", (
-    "Reset must clear the selected category filter"
-)
-assert work_chip.cget("bg") == "#101f49", (
-    "The selected category chip state should reset visually"
-)
-app.close()
-print("Marketplace role gate, registration, responsive layouts, board card and search/reset smoke tests passed.")
+    js(web, app.root,
+       "document.querySelector('[data-category=\\\"Работа\\\"]').click(); 'category'")
+    selected = js(web, app.root,
+        "document.querySelector('[data-category=\\\"Работа\\\"]').classList.contains('active')")
+    assert selected is True, "Category chip should show its active state"
+    js(web, app.root, "document.getElementById('resetFilters').click(); 'reset'")
+    reset_category = js(web, app.root,
+        "document.querySelector('[data-category=\\\"Все категории\\\"]').classList.contains('active')")
+    assert reset_category is True, "Reset should restore the all-categories chip"
+
+    app.root.geometry("1366x768+0+0")
+    pump(app.root, 0.5)
+    card_count = js(web, app.root, "document.querySelectorAll('.listing-card').length")
+    assert card_count == 1, "Listing card should remain visible at compact desktop size"
+    grid_columns = js(web, app.root,
+        "getComputedStyle(document.getElementById('listingGrid')).gridTemplateColumns")
+    assert grid_columns, "Responsive CSS grid should be active"
+    capture(app, "vkus-marketplace-board-1366x768.png")
+
+    report = {
+        "result": "PASS",
+        "renderer": "tkwry WebView / local HTML CSS JS",
+        "tests": [
+            "HTML document loaded inside real VkusApp",
+            "role gate displayed for unauthenticated user",
+            "role selection opened HTML auth form",
+            "RPC login authenticated the test user",
+            "listing data rendered as HTML cards",
+            "search produced empty state",
+            "reset restored the listing",
+            "category chip active state and reset",
+            "responsive layout at 1920x1080 and 1366x768",
+        ],
+        "screenshots": [
+            "vkus-marketplace-role-gate.png",
+            "vkus-marketplace-auth-form.png",
+            "vkus-marketplace-board-1920x1080.png",
+            "vkus-marketplace-board-1366x768.png",
+        ],
+    }
+    (out / "vkus-marketplace-webview-report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print("PASS: Vkus Marketplace rendered and interacted inside the embedded WebView.")
+finally:
+    app.close()

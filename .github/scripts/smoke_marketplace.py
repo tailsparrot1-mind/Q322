@@ -75,6 +75,7 @@ class SmokeMarketplaceClient:
         if city:
             fixtures = [row for row in fixtures
                         if city.casefold() in row["city"].casefold()]
+        print(f"SMOKE_CLIENT filters: kind={kind!r} category={category!r} city={city!r} search={search!r}; rows={len(fixtures)}")
         return fixtures
 
 
@@ -142,6 +143,9 @@ page._marketplace_query_var.set("")
 page._marketplace_kind_var.set("Все типы")
 page._marketplace_category_var.set("Все категории")
 page._marketplace_city_var.set("")
+print("SMOKE_UI_FILTERS", page._marketplace_query_var.get(),
+      page._marketplace_kind_var.get(), page._marketplace_category_var.get(),
+      page._marketplace_city_var.get())
 page._marketplace_refresh()
 app.root.update_idletasks()
 app.root.update()

@@ -205,15 +205,88 @@ class DemandStore:
             ).fetchone()
             return int(row["n"] if row else 0)
 
-    def list_recent(self, limit: int = 100) -> list[dict[str, Any]]:
+    def list_items(
+        self,
+        *,
+        query: str = "",
+        kind: str = "",
+        city: str = "",
+        run_id: str = "",
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Return filtered archive rows for the local archive window."""
+        limit = max(1, min(int(limit), 1000))
+        offset = max(0, int(offset))
+        where = ["d.workspace_id = ?"]
+        params: list[Any] = [self.workspace_id]
+        if query.strip():
+            where.append("(d.body LIKE ? OR d.author_name LIKE ? OR d.username LIKE ? OR d.source_url LIKE ?)")
+            pattern = f"%{query.strip()}%"
+            params.extend([pattern, pattern, pattern, pattern])
+        if kind.strip():
+            where.append("d.kind = ?")
+            params.append(kind.strip())
+        if city.strip():
+            where.append("d.city LIKE ?")
+            params.append(f"%{city.strip()}%")
+        if run_id.strip():
+            where.append("EXISTS (SELECT 1 FROM search_run_items sri WHERE sri.item_id = d.item_id AND sri.run_id = ?)")
+            params.append(run_id.strip())
+        sql = (
+            "SELECT d.item_id, d.kind, d.body, d.interest, d.date_text, d.source_url, "
+            "d.profile_url, d.author_name, d.username, d.city, d.first_seen_at, d.last_seen_at "
+            "FROM demand_items d WHERE " + " AND ".join(where) +
+            " ORDER BY d.last_seen_at DESC LIMIT ? OFFSET ?"
+        )
+        params.extend([limit, offset])
+        with self._connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def count_filtered(
+        self, *, query: str = "", kind: str = "", city: str = "", run_id: str = ""
+    ) -> int:
+        where = ["d.workspace_id = ?"]
+        params: list[Any] = [self.workspace_id]
+        if query.strip():
+            where.append("(d.body LIKE ? OR d.author_name LIKE ? OR d.username LIKE ? OR d.source_url LIKE ?)")
+            pattern = f"%{query.strip()}%"
+            params.extend([pattern, pattern, pattern, pattern])
+        if kind.strip():
+            where.append("d.kind = ?")
+            params.append(kind.strip())
+        if city.strip():
+            where.append("d.city LIKE ?")
+            params.append(f"%{city.strip()}%")
+        if run_id.strip():
+            where.append("EXISTS (SELECT 1 FROM search_run_items sri WHERE sri.item_id = d.item_id AND sri.run_id = ?)")
+            params.append(run_id.strip())
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM demand_items d WHERE " + " AND ".join(where),
+                params,
+            ).fetchone()
+            return int(row["n"] if row else 0)
+
+    def list_search_runs(self, limit: int = 200) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 1000))
         with self._connection() as conn:
             rows = conn.execute(
-                """SELECT kind, body, interest, date_text, source_url, profile_url,
-                          author_name, username, city, first_seen_at, last_seen_at
-                   FROM demand_items
-                   WHERE workspace_id = ?
-                   ORDER BY last_seen_at DESC LIMIT ?""",
+                """SELECT run_id, query, region, city, mode, result_count, created_at
+                   FROM search_runs WHERE workspace_id = ?
+                   ORDER BY created_at DESC LIMIT ?""",
                 (self.workspace_id, limit),
             ).fetchall()
             return [dict(row) for row in rows]
+
+    def delete_item(self, item_id: int) -> bool:
+        with self._connection() as conn:
+            cur = conn.execute(
+                "DELETE FROM demand_items WHERE item_id = ? AND workspace_id = ?",
+                (int(item_id), self.workspace_id),
+            )
+            return cur.rowcount > 0
+
+    def list_recent(self, limit: int = 100) -> list[dict[str, Any]]:
+        return self.list_items(limit=limit)

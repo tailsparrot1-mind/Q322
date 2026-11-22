@@ -718,6 +718,7 @@ class VkusApp:
         actions=tk.Frame(box,bg='#06162c'); actions.grid(row=2,column=0,columnspan=3,sticky='ew',padx=4,pady=(0,6))
         tk.Button(actions,text='СОХРАНИТЬ',command=self.save_config,bg='#174aa1',fg='white',activebackground='#2465d1',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
         tk.Button(actions,text='VK / АВТОРИЗАЦИЯ',command=lambda:self.run_one('auth'),bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(actions,text='ЛИЧНЫЙ АРХИВ',command=self._toggle_local_demand_archive,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
         tk.Button(actions,text='ОТКРЫТЬ VK',command=self._open_vk_direct,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
 
     def _open_vk_direct(self):
@@ -1457,6 +1458,39 @@ class VkusApp:
                 )
                 return False
         return True
+
+    def _toggle_local_demand_archive(self):
+        """Allow the participant to enable or pause long-term local archiving."""
+        enabled = str(self.settings.get('local_demand_storage_consent', '')).lower() == 'yes'
+        if enabled:
+            if not messagebox.askyesno(
+                'Личная база Vkus',
+                'Отключить сохранение новых результатов?\\n\\n'
+                'Уже сохранённая локальная база останется на компьютере.',
+                parent=self.root,
+            ):
+                return
+            self.settings['local_demand_storage_consent'] = 'no'
+            self.demand_store = None
+            self._save_persistent_state()
+            messagebox.showinfo('Личная база Vkus', 'Архивирование новых результатов отключено.', parent=self.root)
+            return
+        if not messagebox.askyesno(
+            'Личная база Vkus',
+            'Включить сохранение истории поисков в ~/.vkus/demand.sqlite3?\\n\\n'
+            'База останется на этом компьютере и не будет отправляться в общую базу Vkus.',
+            parent=self.root,
+        ):
+            return
+        try:
+            self.demand_store = DemandStore()
+        except Exception as exc:
+            self.logger.exception('Could not enable local demand archive')
+            messagebox.showwarning('Личная база Vkus', 'Не удалось открыть базу: ' + str(exc)[:400], parent=self.root)
+            return
+        self.settings['local_demand_storage_consent'] = 'yes'
+        self._save_persistent_state()
+        messagebox.showinfo('Личная база Vkus', 'Личный архив включён.', parent=self.root)
 
     def _search_action(self):
         q = self.search_query_var.get().strip()

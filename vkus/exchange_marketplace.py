@@ -562,18 +562,30 @@ def open_cloud_marketplace_window(parent):
     category_strip.pack(fill="x", padx=22, pady=(0, 10))
     tk.Label(category_strip, text="КАТЕГОРИИ", bg="#07122a", fg="#7f9dcf",
              font=("DejaVu Sans", 7, "bold")).pack(side="left", padx=(0, 10))
-    for category_name in ("Все категории", "Услуги", "Товары", "Работа",
-                          "Подряд и задачи", "Аренда", "Покупка", "Продажа"):
-        active = category_name == "Все категории"
-        tk.Button(category_strip, text=category_name,
-                  command=lambda value=category_name: (
-                      category_var.set(value), refresh()),
+    category_buttons = {}
+
+    def select_category(value):
+        category_var.set(value)
+        for name, button in category_buttons.items():
+            selected_category = name == value
+            button.configure(
+                bg="#263b79" if selected_category else "#101f49",
+                fg="#ffffff" if selected_category else "#a9c9f4",
+            )
+        refresh()
+
+    for category_name in ("Все категории",) + CATEGORIES:
+        active = category_name == category_var.get()
+        button = tk.Button(category_strip, text=category_name,
+                  command=lambda value=category_name: select_category(value),
                   bg="#263b79" if active else "#101f49",
                   fg="#ffffff" if active else "#a9c9f4",
                   activebackground="#4a3b9b", activeforeground="white",
                   relief="flat", bd=0, padx=11, pady=6,
                   font=("DejaVu Sans", 7, "bold"),
-                  cursor="hand2").pack(side="left", padx=(0, 5))
+                  cursor="hand2")
+        button.pack(side="left", padx=(0, 5))
+        category_buttons[category_name] = button
 
     search_actions = tk.Frame(filters, bg="#0a1a38")
     tk.Button(search_actions, text="НАЙТИ", command=lambda: refresh(),
@@ -581,9 +593,21 @@ def open_cloud_marketplace_window(parent):
               activeforeground="white", relief="flat", bd=0,
               padx=17, pady=8, cursor="hand2",
               font=("DejaVu Sans", 8, "bold")).pack(side="left", padx=(0, 6))
+    def reset_filters():
+        query_var.set("")
+        kind_var.set("Все типы")
+        category_var.set("Все категории")
+        city_var.set("")
+        for name, button in category_buttons.items():
+            selected_category = name == "Все категории"
+            button.configure(
+                bg="#263b79" if selected_category else "#101f49",
+                fg="#ffffff" if selected_category else "#a9c9f4",
+            )
+        refresh()
+
     reset_button = tk.Button(search_actions, text="СБРОСИТЬ",
-              command=lambda: (query_var.set(""), kind_var.set("Все типы"),
-                               category_var.set("Все категории"), city_var.set("")),
+              command=reset_filters,
               bg="#142b4d", fg="#c7d9f7", activebackground="#204474",
               relief="flat", bd=0, padx=12, pady=8, cursor="hand2",
               font=("DejaVu Sans", 8, "bold"))
@@ -677,7 +701,7 @@ def open_cloud_marketplace_window(parent):
         if not rows:
             empty = tk.Frame(cards_frame, bg="#0d1e3d",
                              highlightbackground="#6840a4", highlightthickness=1)
-            empty.grid(row=0, column=0, columnspan=2, sticky="nsew",
+            empty.grid(row=0, column=0, columnspan=5, sticky="nsew",
                        padx=8, pady=8, ipady=38)
             tk.Label(empty, text="ЗДЕСЬ ПОЯВЯТСЯ ОБЪЯВЛЕНИЯ",
                      bg="#0d1e3d", fg="#dca4ff",

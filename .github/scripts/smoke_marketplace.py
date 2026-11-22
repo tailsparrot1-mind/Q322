@@ -130,6 +130,18 @@ assert reset_right <= panel_right, (
     f"Reset button clipped by filter panel: right={reset_right}, panel_right={panel_right}"
 )
 size_and_capture(app, 1366, 768, "vkus-marketplace-board-1366x768.png")
+visible_cards = [child for child in cards.winfo_children()
+                 if child.winfo_manager() == "grid"]
+assert visible_cards, "A matching listing card must remain visible at 1366x768"
+assert visible_cards[0].winfo_width() >= 180, (
+    f"Marketplace card is too narrow after resize: {visible_cards[0].winfo_width()}px"
+)
+actions = page._marketplace_actions_frame
+actions_bottom = actions.winfo_rooty() + actions.winfo_height()
+root_bottom = app.root.winfo_rooty() + app.root.winfo_height()
+assert actions.winfo_height() > 0 and actions_bottom <= root_bottom, (
+    f"Marketplace action row is clipped: bottom={actions_bottom}, root_bottom={root_bottom}"
+)
 
 search = page._marketplace_search_entry
 search.insert(0, "no-such-listing")
@@ -165,5 +177,33 @@ app.root.update_idletasks()
 app.root.update()
 assert any("Тестовая заявка: нужен мастер" in value
            for value in collect_text(cards)), "Matching search should restore the card"
+
+def find_button(widget, caption):
+    if isinstance(widget, tk.Button) and widget.cget("text") == caption:
+        return widget
+    for child in widget.winfo_children():
+        found = find_button(child, caption)
+        if found:
+            return found
+    return None
+
+work_chip = find_button(page, "Работа")
+assert work_chip is not None, "Marketplace category chips must be present"
+work_chip.invoke()
+app.root.update_idletasks()
+app.root.update()
+assert "ЗДЕСЬ ПОЯВЯТСЯ ОБЪЯВЛЕНИЯ" in " ".join(collect_text(cards)), (
+    "Category chip must filter the listing collection"
+)
+reset.invoke()
+app.root.update_idletasks()
+app.root.update()
+assert any("Тестовая заявка: нужен мастер" in value
+           for value in collect_text(cards)), (
+    "Reset must clear category and restore the listing"
+)
+assert work_chip.cget("bg") == "#101f49", (
+    "The selected category chip state should reset visually"
+)
 app.close()
 print("Marketplace role gate, registration, responsive layouts, board card and search/reset smoke tests passed.")

@@ -57,3 +57,15 @@ CI run 45054160634 проверил промежуточный head a3a08ac38c2f
 - Типы публикаций нормализуются к post/comment, чтобы фильтры работали одинаково для singular/plural значений.
 
 Проверки для этого этапа запускаются новым GitHub Actions job `personal-archive-ui-smoke`. До завершения Actions нельзя заявлять, что новый UI smoke уже прошёл. Live VK и Kali/VMware всё ещё не проверены.
+
+
+## CI-подтверждение UI
+
+GitHub Actions run 45055685481:
+- compileall + focused SQLite tests: PASS;
+- personal-archive-ui-smoke: PASS (list, text filter, city/type filter, history restore, deletion);
+- marketplace-ui-smoke: PASS;
+- screenshot artifact Vkus-personal-archive-ui uploaded;
+- license-store-webview-smoke was still in progress at last check.
+
+First run 45055445989 had a failing test that assumed deterministic ordering for two search runs created within the same second. The test was corrected to select the run by query value. The personal archive UI smoke itself passed in that first run; the follow-up run confirmed the focused test suite and UI smoke pass.

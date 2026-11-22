@@ -31,7 +31,7 @@ class DemandStoreTests(unittest.TestCase):
             self.assertEqual(
                 store.save_search_results(
                     query="ищу мастера", region="Оренбургская область",
-                    city="Орск", mode="posts", results=[first],
+                    city="Орск", mode="posts", results=[first, first],
                 ),
                 1,
             )

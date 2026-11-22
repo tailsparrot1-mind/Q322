@@ -28,7 +28,7 @@ GitHub Actions run [45057878686](https://github.com/tailsparrot1-mind/Q322/actio
 - Marketplace UI smoke — **PASS**: экран выбора роли, регистрационная форма, доска с синтетической записью, 1920×1080, 1366×768, попадание кнопки сброса в границы панели, Enter-поиск и сброс фильтров.
 - Скриншоты текущего прогона загружены как artifact `Vkus-Q322-marketplace-screenshots`.
 - ZIP исходников загружен как artifact `Vkus-Q322-embedded-board`.
-- License Store WebView smoke — **IN PROGRESS** на момент составления отчёта; не относится к Marketplace.
+- License Store WebView smoke — **PASS** в том же run; это отдельная проверка другого модуля.
 - Реальная авторизация и публикации Supabase — **НЕ ПРОВЕРЕНЫ**.
 - Kali Linux / VMware на машине пользователя — **НЕ ПРОВЕРЕНО**.
 

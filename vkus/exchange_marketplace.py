@@ -486,9 +486,10 @@ def open_cloud_marketplace_window(parent):
     kind_var = tk.StringVar(value="Все типы")
     category_var = tk.StringVar(value="Все категории")
     city_var = tk.StringVar()
+    filter_cells = []
     def filter_field(caption, widget_type, **options):
         cell = tk.Frame(filters, bg="#0a1a38")
-        cell.pack(side="left", padx=(0, 12), anchor="n")
+        filter_cells.append(cell)
         tk.Label(cell, text=caption.upper(), bg="#0a1a38", fg="#9ab2df",
                  font=("DejaVu Sans", 7, "bold")).pack(anchor="w", pady=(0, 2))
         widget = widget_type(cell, **options)
@@ -509,18 +510,46 @@ def open_cloud_marketplace_window(parent):
                  highlightcolor="#8d4cff", font=("DejaVu Sans", 9))
 
     search_actions = tk.Frame(filters, bg="#0a1a38")
-    search_actions.pack(side="left", padx=(2, 0), pady=(14, 0))
     tk.Button(search_actions, text="НАЙТИ", command=lambda: refresh(),
               bg="#6f35c5", fg="white", activebackground="#8e4de5",
               activeforeground="white", relief="flat", bd=0,
               padx=17, pady=8, cursor="hand2",
               font=("DejaVu Sans", 8, "bold")).pack(side="left", padx=(0, 6))
-    tk.Button(search_actions, text="СБРОСИТЬ",
+    reset_button = tk.Button(search_actions, text="СБРОСИТЬ",
               command=lambda: (query_var.set(""), kind_var.set("Все типы"),
                                category_var.set("Все категории"), city_var.set("")),
               bg="#142b4d", fg="#c7d9f7", activebackground="#204474",
               relief="flat", bd=0, padx=12, pady=8, cursor="hand2",
-              font=("DejaVu Sans", 8, "bold")).pack(side="left")
+              font=("DejaVu Sans", 8, "bold"))
+    reset_button.pack(side="left")
+
+    def layout_filter_controls(_event=None):
+        # The search row is split on compact windows so the reset action never
+        # falls outside the panel. The same controls remain visible and usable.
+        compact = filters.winfo_width() < 1080
+        for cell in filter_cells:
+            cell.grid_forget()
+        search_actions.grid_forget()
+        if compact:
+            placements = ((0, 0), (0, 1), (0, 2), (1, 0))
+            for cell, (row, column) in zip(filter_cells, placements):
+                cell.grid(row=row, column=column, sticky="ew",
+                          padx=(0, 10), pady=(0, 6) if row == 0 else (2, 0))
+            search_actions.grid(row=1, column=1, columnspan=2,
+                                sticky="w", padx=(2, 0), pady=(14, 0))
+            for column in range(3):
+                filters.grid_columnconfigure(column, weight=1)
+            filters.grid_columnconfigure(3, weight=0)
+        else:
+            for column, cell in enumerate(filter_cells):
+                cell.grid(row=0, column=column, sticky="ew",
+                          padx=(0, 12), pady=0)
+                filters.grid_columnconfigure(column, weight=0)
+            search_actions.grid(row=0, column=len(filter_cells),
+                                sticky="w", padx=(2, 0), pady=(14, 0))
+            filters.grid_columnconfigure(len(filter_cells), weight=0)
+
+    filters.bind("<Configure>", layout_filter_controls)
 
     body = tk.Frame(shell, bg="#07122a")
     body.pack(fill="both", expand=True, padx=22, pady=(0, 10))
@@ -1109,6 +1138,8 @@ def open_cloud_marketplace_window(parent):
     # Stable handles for the repository's UI smoke test; normal users interact
     # with the same visible controls and callbacks.
     win._marketplace_search_entry = query_entry
+    win._marketplace_reset_button = reset_button
+    win._marketplace_filters_panel = filters_shell
     win._marketplace_cards_frame = cards_frame
     win._marketplace_refresh = refresh
     win._marketplace_gate = gate

@@ -494,10 +494,11 @@ def open_cloud_marketplace_window(parent):
         widget = widget_type(cell, **options)
         widget.pack(fill="x", pady=(3, 0))
         return widget
-    filter_field("Поиск", tk.Entry, textvariable=query_var, width=28,
+    query_entry = filter_field("Поиск", tk.Entry, textvariable=query_var, width=28,
                  bg="#0a1731", fg="white", insertbackground="white", relief="flat",
                  bd=0, highlightthickness=1, highlightbackground="#34527f",
                  highlightcolor="#b34cff", font=("DejaVu Sans", 9))
+    query_entry.bind("<Return>", lambda _event: refresh())
     filter_field("Тип", ttk.Combobox, textvariable=kind_var,
                  values=("Все типы",) + KINDS, state="readonly", width=13)
     filter_field("Категория", ttk.Combobox, textvariable=category_var,
@@ -590,6 +591,9 @@ def open_cloud_marketplace_window(parent):
                      "объявление станет доступно пользователям маркетплейса.",
                      bg="#0d1e3d", fg="#b6c9eb", font=("DejaVu Sans", 9),
                      wraplength=760, justify="center").pack(pady=(0, 18))
+        available_width = max(520, cards_canvas.winfo_width() - 72)
+        card_wrap = (max(280, available_width - 24) if len(rows) == 1
+                     else max(210, (available_width - 28) // 2))
         for index, item in enumerate(rows):
             key = str(item["id"])
             rows_by_id[key] = item
@@ -618,7 +622,7 @@ def open_cloud_marketplace_window(parent):
             tk.Label(card, text=item.get("title") or "Без заголовка",
                      bg="#0d1d3b", fg="#f6f3ff",
                      font=("DejaVu Sans", 13, "bold"),
-                     anchor="w", justify="left", wraplength=520).pack(
+                     anchor="w", justify="left", wraplength=card_wrap).pack(
                          fill="x", padx=(5, 0), pady=(12, 6))
             summary = (item.get("description") or "").replace("\n", " ").strip()
             if len(summary) > 220:
@@ -626,7 +630,7 @@ def open_cloud_marketplace_window(parent):
             tk.Label(card, text=summary or "Автор пока не добавил описание.",
                      bg="#0d1d3b", fg="#b8c7e6",
                      font=("DejaVu Sans", 9), anchor="w", justify="left",
-                     wraplength=520).pack(fill="x", padx=(5, 0), pady=(0, 12))
+                     wraplength=card_wrap).pack(fill="x", padx=(5, 0), pady=(0, 12))
             meta_row = tk.Frame(card, bg="#0d1d3b")
             meta_row.pack(fill="x", padx=(5, 0))
             def meta_chip(caption, value, color="#d8c5ff", fill="#1a2c53"):

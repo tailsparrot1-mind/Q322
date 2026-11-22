@@ -56,6 +56,7 @@ out.mkdir(exist_ok=True)
 
 # Unauthenticated role gate and transparent click targets.
 app = VkusApp()
+app.root.geometry("1920x1080+0+0")
 app._unlock()
 app._show_marketplace()
 app.root.update_idletasks()
@@ -85,6 +86,7 @@ app.close()
 # Authenticated board state with an explicitly synthetic fixture.
 SmokeMarketplaceClient.authenticated = True
 app = VkusApp()
+app.root.geometry("1920x1080+0+0")
 app._unlock()
 app._show_marketplace()
 app.root.update_idletasks()
@@ -93,7 +95,21 @@ page = app.marketplace_page
 assert not page._marketplace_gate.winfo_ismapped(), "Authenticated user should see the board"
 cards = page._marketplace_cards_frame
 assert len(cards.winfo_children()) == 1, "Expected one smoke fixture card"
-ImageGrab.grab().save(out / "vkus-marketplace-board-fixture.png")
+ImageGrab.grab().save(out / "vkus-marketplace-board-1920x1080.png")
+
+# Compact desktop layout: controls must stay inside the filter panel.
+app.root.geometry("1366x768+0+0")
+app.root.update_idletasks()
+app.root.update()
+reset = page._marketplace_reset_button
+panel = page._marketplace_filters_panel
+assert reset.winfo_ismapped(), "Reset action must remain visible at 1366x768"
+reset_right = reset.winfo_rootx() + reset.winfo_width()
+panel_right = panel.winfo_rootx() + panel.winfo_width()
+assert reset_right <= panel_right, (
+    f"Reset button clipped by filter panel: right={reset_right}, panel_right={panel_right}"
+)
+ImageGrab.grab().save(out / "vkus-marketplace-board-1366x768.png")
 
 search = page._marketplace_search_entry
 search.insert(0, "no-such-listing")
@@ -101,11 +117,14 @@ search.event_generate("<Return>")
 app.root.update_idletasks()
 app.root.update()
 assert len(cards.winfo_children()) == 1, "No-results state should replace the card"
-search.delete(0, "end")
+reset.invoke()
+app.root.update_idletasks()
+app.root.update()
+assert len(cards.winfo_children()) == 1, "Reset action should restore the listing"
 search.insert(0, "мастер")
 search.event_generate("<Return>")
 app.root.update_idletasks()
 app.root.update()
 assert len(cards.winfo_children()) == 1, "Matching search should restore the card"
 app.close()
-print("Marketplace role gate, registration, board card and search smoke tests passed.")
+print("Marketplace role gate, registration, responsive layouts, board card and search/reset smoke tests passed.")

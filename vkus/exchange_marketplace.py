@@ -426,18 +426,29 @@ def open_cloud_marketplace_window(parent):
               selectforeground=[("readonly", "#eaf1ff")],
               background=[("readonly", "#17264a")])
 
-    shell = tk.Frame(win, bg="#07142d", highlightbackground="#7136c3",
-                     highlightthickness=1)
+    shell = tk.Frame(win, bg="#07132f", highlightbackground="#5ce7ff",
+                     highlightthickness=2)
     shell.pack(fill="both", expand=True, padx=8, pady=8)
     header = tk.Frame(shell, bg="#07122a")
-    header.pack(fill="x", padx=22, pady=(16, 10))
-    heading_block = tk.Frame(header, bg="#07122a")
-    heading_block.pack(side="left", fill="x", expand=True)
-    tk.Label(heading_block, text="ДОСКА ОБЪЯВЛЕНИЙ", bg="#07122a",
-             fg="#d9a0ff", font=("DejaVu Sans", 20, "bold")).pack(anchor="w")
-    tk.Label(heading_block, text="Маркетплейс услуг, товаров, работы и запросов",
+    header.pack(fill="x", padx=22, pady=(14, 8))
+    brand = tk.Frame(header, bg="#07122a")
+    brand.pack(side="left", padx=(0, 24))
+    tk.Label(brand, text="V", bg="#11d9ee", fg="#06122d",
+             font=("DejaVu Sans", 17, "bold"), width=2, pady=2).pack(side="left")
+    heading_block = tk.Frame(brand, bg="#07122a")
+    heading_block.pack(side="left", padx=(9, 0))
+    tk.Label(heading_block, text="VKUS", bg="#07122a",
+             fg="#f4f7ff", font=("DejaVu Sans", 13, "bold")).pack(anchor="w")
+    tk.Label(heading_block, text="МАРКЕТПЛЕЙС", bg="#07122a",
+             fg="#54dff5", font=("DejaVu Sans", 7, "bold")).pack(anchor="w")
+    heading_copy = tk.Frame(header, bg="#07122a")
+    heading_copy.pack(side="left", fill="x", expand=True)
+    tk.Label(heading_copy, text="Найдите нужное. Предложите своё.",
+             bg="#07122a", fg="#f5f4ff",
+             font=("DejaVu Sans", 12, "bold")).pack(anchor="w")
+    tk.Label(heading_copy, text="Услуги · товары · работа · задачи · объявления",
              bg="#07122a", fg="#8fa9d7",
-             font=("DejaVu Sans", 9)).pack(anchor="w", pady=(2, 0))
+             font=("DejaVu Sans", 8)).pack(anchor="w", pady=(2, 0))
     account_pill = tk.Frame(header, bg="#0d2546",
                             highlightbackground="#24618a", highlightthickness=1)
     account_pill.pack(side="right", padx=4, pady=3)
@@ -477,9 +488,25 @@ def open_cloud_marketplace_window(parent):
              fg="white", insertbackground="white", relief="flat", bd=0, highlightthickness=1,
              highlightbackground="#304b80", highlightcolor="#8d4cff").pack(side="left", padx=4, pady=8, ipady=4)
 
+    hero = tk.Frame(shell, bg="#0a1740", highlightbackground="#3157a1",
+                    highlightthickness=1)
+    hero.pack(fill="x", padx=22, pady=(0, 10))
+    hero_left = tk.Frame(hero, bg="#0a1740")
+    hero_left.pack(side="left", fill="x", expand=True, padx=16, pady=11)
+    tk.Label(hero_left, text="Объявления рядом", bg="#0a1740",
+             fg="#ffffff", font=("DejaVu Sans", 17, "bold")).pack(anchor="w")
+    tk.Label(hero_left, text="Выбирайте предложения или находите исполнителей в своём городе",
+             bg="#0a1740", fg="#a7c3ed",
+             font=("DejaVu Sans", 8)).pack(anchor="w", pady=(2, 0))
+    tk.Button(hero, text="+  РАЗМЕСТИТЬ ОБЪЯВЛЕНИЕ",
+              command=lambda: create_or_edit(),
+              bg="#e94db7", fg="white", activebackground="#ff68ce",
+              relief="flat", bd=0, padx=18, pady=10, cursor="hand2",
+              font=("DejaVu Sans", 8, "bold")).pack(side="right", padx=16, pady=12)
+
     filters_shell = tk.Frame(shell, bg="#0a1a38",
-                             highlightbackground="#203f70", highlightthickness=1)
-    filters_shell.pack(fill="x", padx=22, pady=(0, 12))
+                             highlightbackground="#345c9c", highlightthickness=1)
+    filters_shell.pack(fill="x", padx=22, pady=(0, 8))
     filters = tk.Frame(filters_shell, bg="#0a1a38")
     filters.pack(fill="x", padx=14, pady=12)
     query_var = tk.StringVar()
@@ -508,6 +535,23 @@ def open_cloud_marketplace_window(parent):
                  bg="#0a1731", fg="white", insertbackground="white", relief="flat",
                  bd=0, highlightthickness=1, highlightbackground="#304b80",
                  highlightcolor="#8d4cff", font=("DejaVu Sans", 9))
+
+    category_strip = tk.Frame(shell, bg="#07122a")
+    category_strip.pack(fill="x", padx=22, pady=(0, 10))
+    tk.Label(category_strip, text="КАТЕГОРИИ", bg="#07122a", fg="#7f9dcf",
+             font=("DejaVu Sans", 7, "bold")).pack(side="left", padx=(0, 10))
+    for category_name in ("Все категории", "Услуги", "Товары", "Работа",
+                          "Подряд и задачи", "Аренда", "Покупка", "Продажа"):
+        active = category_name == "Все категории"
+        tk.Button(category_strip, text=category_name,
+                  command=lambda value=category_name: (
+                      category_var.set(value), refresh()),
+                  bg="#263b79" if active else "#101f49",
+                  fg="#ffffff" if active else "#a9c9f4",
+                  activebackground="#4a3b9b", activeforeground="white",
+                  relief="flat", bd=0, padx=11, pady=6,
+                  font=("DejaVu Sans", 7, "bold"),
+                  cursor="hand2").pack(side="left", padx=(0, 5))
 
     search_actions = tk.Frame(filters, bg="#0a1a38")
     tk.Button(search_actions, text="НАЙТИ", command=lambda: refresh(),
@@ -565,15 +609,15 @@ def open_cloud_marketplace_window(parent):
         scrollregion=cards_canvas.bbox("all")))
     cards_canvas.bind("<Configure>", lambda event: cards_canvas.itemconfigure(
         cards_window, width=event.width))
-    cards_frame.grid_columnconfigure(0, weight=1, uniform="market-cards")
-    cards_frame.grid_columnconfigure(1, weight=1, uniform="market-cards")
+    for column in range(5):
+        cards_frame.grid_columnconfigure(column, weight=1, uniform="market-cards")
 
-    details_shell = tk.Frame(shell, bg="#0b1d3b",
-                             highlightbackground="#31517e", highlightthickness=1)
+    details_shell = tk.Frame(shell, bg="#10224a",
+                             highlightbackground="#3c6aab", highlightthickness=1)
     details_shell.pack(fill="x", padx=22, pady=(0, 8))
     details = tk.Label(details_shell,
                        text="Выберите карточку, чтобы увидеть полное описание и контакт.",
-                       bg="#0b1d3b", fg="#b9cbea", justify="left", anchor="w",
+                       bg="#10224a", fg="#c6d8f7", justify="left", anchor="w",
                        padx=14, pady=10, font=("DejaVu Sans", 9),
                        wraplength=1100)
     details.pack(fill="x")
@@ -620,69 +664,89 @@ def open_cloud_marketplace_window(parent):
                      "объявление станет доступно пользователям маркетплейса.",
                      bg="#0d1e3d", fg="#b6c9eb", font=("DejaVu Sans", 9),
                      wraplength=760, justify="center").pack(pady=(0, 18))
-        available_width = max(520, cards_canvas.winfo_width() - 72)
-        card_wrap = (max(280, available_width - 24) if len(rows) == 1
-                     else max(210, (available_width - 28) // 2))
+        available_width = max(520, cards_canvas.winfo_width() - 36)
+        columns = max(1, min(5, available_width // 238))
+        for column in range(5):
+            cards_frame.grid_columnconfigure(column, weight=1 if column < columns else 0,
+                                             uniform="market-cards")
+        card_wrap = max(150, (available_width - (columns * 18)) // columns - 28)
+        art_palette = (
+            ("#1d8fd1", "#7544d8"), ("#12b9c7", "#4d62d6"),
+            ("#713bc4", "#d34d9f"), ("#315a9b", "#7b53d8"),
+            ("#d35a9e", "#7350c7"),
+        )
+        category_art = {
+            "Услуги": "✦", "Товары": "◇", "Работа": "▣",
+            "Подряд и задачи": "⚒", "Аренда": "⌂",
+            "Покупка": "＋", "Продажа": "◆", "Другое": "✧",
+        }
         for index, item in enumerate(rows):
             key = str(item["id"])
             rows_by_id[key] = item
             kind = item.get("kind") or "Ищу"
-            accent = "#b75cff" if kind == "Ищу" else "#24bde9"
-            card = tk.Frame(cards_frame, bg="#0d1d3b",
-                            highlightbackground="#31517e", highlightthickness=1,
-                            padx=16, pady=14)
-            card.grid(row=index // 2, column=index % 2,
-                      columnspan=2 if len(rows) == 1 else 1,
-                      sticky="nsew", padx=8, pady=8)
-            # Slim neon rail makes each listing instantly scannable.
-            stripe = tk.Frame(card, bg=accent, width=4)
-            stripe.place(x=0, y=0, relheight=1)
-            top = tk.Frame(card, bg="#101f43")
-            top.pack(fill="x", padx=(5, 0))
-            badge_bg = "#2b1555" if kind == "Ищу" else "#103c55"
+            accent = "#ff66c9" if kind == "Ищу" else "#35dff0"
+            card_bg = "#142957"
+            art_a, art_b = art_palette[index % len(art_palette)]
+            card = tk.Frame(cards_frame, bg=card_bg,
+                            highlightbackground="#4269b7", highlightthickness=1,
+                            padx=10, pady=10)
+            card.grid(row=index // columns, column=index % columns,
+                      sticky="nsew", padx=7, pady=7)
+            art = tk.Frame(card, bg=art_a, height=104,
+                           highlightbackground=art_b, highlightthickness=1)
+            art.pack(fill="x", pady=(0, 9))
+            art.pack_propagate(False)
+            tk.Label(art, text=category_art.get(item.get("category"), "✧"),
+                     bg=art_a, fg="#ffffff",
+                     font=("DejaVu Sans", 36, "bold")).pack(expand=True)
+            top = tk.Frame(card, bg=card_bg)
+            top.pack(fill="x")
+            badge_bg = "#46215f" if kind == "Ищу" else "#104b65"
             badge_text = "ИЩУ" if kind == "Ищу" else "ПРЕДЛАГАЮ"
             tk.Label(top, text=badge_text, bg=badge_bg, fg=accent,
-                     font=("DejaVu Sans", 8, "bold"),
-                     padx=12, pady=5).pack(side="left")
+                     font=("DejaVu Sans", 7, "bold"),
+                     padx=9, pady=4).pack(side="left")
             created = (item.get("created_at") or "")[:10]
-            tk.Label(top, text=f"ОПУБЛИКОВАНО  {created or '—'}",
-                     bg="#101f43", fg="#8098c6",
-                     font=("DejaVu Sans", 7, "bold")).pack(side="right", padx=(4, 2))
+            tk.Label(top, text=created or "НОВОЕ", bg=card_bg, fg="#8098c6",
+                     font=("DejaVu Sans", 7, "bold")).pack(side="right")
             tk.Label(card, text=item.get("title") or "Без заголовка",
-                     bg="#0d1d3b", fg="#f6f3ff",
-                     font=("DejaVu Sans", 13, "bold"),
-                     anchor="w", justify="left", wraplength=card_wrap).pack(
-                         fill="x", padx=(5, 0), pady=(12, 6))
+                     bg=card_bg, fg="#f8f7ff",
+                     font=("DejaVu Sans", 10, "bold"),
+                     anchor="w", justify="left", wraplength=card_wrap,
+                     height=2).pack(fill="x", pady=(8, 4))
             summary = (item.get("description") or "").replace("\n", " ").strip()
-            if len(summary) > 220:
-                summary = summary[:217] + "…"
+            if len(summary) > 112:
+                summary = summary[:109] + "…"
             tk.Label(card, text=summary or "Автор пока не добавил описание.",
-                     bg="#0d1d3b", fg="#b8c7e6",
-                     font=("DejaVu Sans", 9), anchor="w", justify="left",
-                     wraplength=card_wrap).pack(fill="x", padx=(5, 0), pady=(0, 12))
-            meta_row = tk.Frame(card, bg="#0d1d3b")
-            meta_row.pack(fill="x", padx=(5, 0))
-            def meta_chip(caption, value, color="#d8c5ff", fill="#1a2c53"):
-                tk.Label(meta_row, text=f"{caption}  {value}", bg=fill, fg=color,
-                         font=("DejaVu Sans", 8, "bold"),
-                         padx=10, pady=6).pack(side="left", padx=(0, 8))
-            meta_chip("КАТЕГОРИЯ", item.get("category") or "Другое")
-            meta_chip("ГОРОД", f"⌖ {item.get('city') or 'Не указан'}", "#b9d8ff", "#142b50")
-            if item.get("price") not in (None, ""):
-                price = f"{item.get('price')} {item.get('currency') or 'RUB'}"
-                meta_chip("БЮДЖЕТ" if kind == "Ищу" else "ЦЕНА", price,
-                          "#83f0df" if kind == "Ищу" else "#8be7ff",
-                          "#103b4a" if kind == "Ищу" else "#10354b")
+                     bg=card_bg, fg="#afc2e5",
+                     font=("DejaVu Sans", 8), anchor="w", justify="left",
+                     wraplength=card_wrap, height=3).pack(fill="x", pady=(0, 8))
+            tk.Label(card, text=(f"{item.get('price')} {item.get('currency') or 'RUB'}"
+                                if item.get("price") not in (None, "") else
+                                "Цена договорная"),
+                     bg=card_bg, fg="#79f2e2",
+                     font=("DejaVu Sans", 13, "bold"),
+                     anchor="w").pack(fill="x", pady=(0, 7))
+            meta_row = tk.Frame(card, bg=card_bg)
+            meta_row.pack(fill="x")
+            tk.Label(meta_row, text=f"⌖  {item.get('city') or 'Город не указан'}",
+                     bg="#1c3769", fg="#c3d8ff",
+                     font=("DejaVu Sans", 7, "bold"),
+                     padx=8, pady=5).pack(side="left")
+            tk.Label(meta_row, text=item.get("category") or "Другое",
+                     bg="#25366b", fg="#d8c5ff",
+                     font=("DejaVu Sans", 7, "bold"),
+                     padx=8, pady=5).pack(side="right")
             status_text = item.get("status") or "Активно"
-            tk.Label(meta_row, text=status_text.upper(), bg="#101f43",
+            tk.Label(card, text=status_text.upper(), bg=card_bg,
                      fg="#6fe0b4" if status_text == "Активно" else "#a2b0ce",
-                     font=("DejaVu Sans", 7, "bold")).pack(side="right", padx=(4, 2))
+                     font=("DejaVu Sans", 7, "bold")).pack(anchor="w", pady=(8, 0))
             def choose(_event=None, listing_key=key, selected_card=card):
                 selected_id["value"] = listing_key
                 for sibling in cards_frame.winfo_children():
                     if isinstance(sibling, tk.Frame):
-                        sibling.configure(highlightbackground="#31517e")
-                selected_card.configure(highlightbackground="#d04cff")
+                        sibling.configure(highlightbackground="#4269b7")
+                selected_card.configure(highlightbackground="#ef65d0")
                 show_details()
             def bind_card_clicks(widget):
                 widget.bind("<Button-1>", choose, add="+")

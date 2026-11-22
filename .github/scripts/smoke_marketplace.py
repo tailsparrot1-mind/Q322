@@ -54,6 +54,18 @@ from vkus.app import VkusApp
 out = Path("artifacts")
 out.mkdir(exist_ok=True)
 
+
+def size_and_capture(app, width, height, filename):
+    app.root.geometry(f"{width}x{height}+0+0")
+    app.root.update_idletasks()
+    app.root.update()
+    actual = (app.root.winfo_width(), app.root.winfo_height())
+    assert actual == (width, height), (
+        f"Requested {width}x{height}, got {actual[0]}x{actual[1]}"
+    )
+    x, y = app.root.winfo_rootx(), app.root.winfo_rooty()
+    ImageGrab.grab(bbox=(x, y, x + width, y + height)).save(out / filename)
+
 # Unauthenticated role gate and transparent click targets.
 app = VkusApp()
 app.root.geometry("1920x1080+0+0")
@@ -61,7 +73,7 @@ app._unlock()
 app._show_marketplace()
 app.root.update_idletasks()
 app.root.update()
-ImageGrab.grab().save(out / "vkus-marketplace-role-gate.png")
+size_and_capture(app, 1920, 1080, "vkus-marketplace-role-gate.png")
 
 page = app.marketplace_page
 canvas = page._marketplace_gate_canvas
@@ -80,7 +92,7 @@ app.root.update()
 forms = [child for child in gate.winfo_children()
          if child is not canvas and child.winfo_exists()]
 assert forms, "Role image hotspot did not open the registration form"
-ImageGrab.grab().save(out / "vkus-marketplace-registration-form.png")
+size_and_capture(app, 1920, 1080, "vkus-marketplace-registration-form.png")
 app.close()
 
 # Authenticated board state with an explicitly synthetic fixture.
@@ -95,7 +107,7 @@ page = app.marketplace_page
 assert not page._marketplace_gate.winfo_ismapped(), "Authenticated user should see the board"
 cards = page._marketplace_cards_frame
 assert len(cards.winfo_children()) == 1, "Expected one smoke fixture card"
-ImageGrab.grab().save(out / "vkus-marketplace-board-1920x1080.png")
+size_and_capture(app, 1920, 1080, "vkus-marketplace-board-1920x1080.png")
 
 # Compact desktop layout: controls must stay inside the filter panel.
 app.root.geometry("1366x768+0+0")
@@ -109,7 +121,7 @@ panel_right = panel.winfo_rootx() + panel.winfo_width()
 assert reset_right <= panel_right, (
     f"Reset button clipped by filter panel: right={reset_right}, panel_right={panel_right}"
 )
-ImageGrab.grab().save(out / "vkus-marketplace-board-1366x768.png")
+size_and_capture(app, 1366, 768, "vkus-marketplace-board-1366x768.png")
 
 search = page._marketplace_search_entry
 search.insert(0, "no-such-listing")

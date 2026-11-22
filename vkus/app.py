@@ -1480,6 +1480,7 @@ class VkusApp:
             self._render_results([])
             return
 
+        self._confirm_local_demand_storage()
         self._search_generation += 1
         generation = self._search_generation
         community_url = self.community_url_var.get().strip()

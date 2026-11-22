@@ -15,6 +15,8 @@ jobs:
           python-version: "3.12"
       - name: Compile application and tests
         run: python -m compileall -q main.py vkus tests .github/scripts
+      - name: Test VK demand normalization
+        run: python -m unittest discover -s tests -p 'test_vk_demand_collector.py' -v
       - name: Package current Vkus source
         run: zip -r Vkus-Q322-embedded-board.zip main.py install.sh run.sh requirements.txt README.md vkus data tests
       - uses: actions/upload-artifact@v4

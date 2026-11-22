@@ -69,3 +69,15 @@ GitHub Actions run 45055685481:
 - license-store-webview-smoke was still in progress at last check.
 
 First run 45055445989 had a failing test that assumed deterministic ordering for two search runs created within the same second. The test was corrected to select the run by query value. The personal archive UI smoke itself passed in that first run; the follow-up run confirmed the focused test suite and UI smoke pass.
+
+
+## Полный CI на кодовом head
+
+Run 45055685481, application-code head d5ba6f1e43f157a430c985d878513dc9c0957385:
+- compile + focused SQLite unit tests — PASS;
+- personal-archive-ui-smoke — PASS;
+- marketplace-ui-smoke — PASS;
+- license-store-webview-smoke — PASS.
+Скриншот архива и ZIP исходного пакета опубликованы как workflow artifacts.
+
+На последующем documentation-only head 489f1d033e041247920d56839bb0a0f73ba08b6e run 45055821837: compile, marketplace-ui-smoke и personal-archive-ui-smoke — PASS; license-store-webview-smoke ещё выполнялся на момент последней проверки.

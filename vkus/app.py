@@ -1534,14 +1534,38 @@ class VkusApp:
             style.theme_use('clam')
         except Exception:
             pass
-        style.configure('Treeview', background='#071426', foreground=TEXT,
-                        fieldbackground='#071426', rowheight=27, borderwidth=0)
-        style.map('Treeview', background=[('selected', '#174aa1')], foreground=[('selected', 'white')])
-        style.configure('Treeview.Heading', background='#0b2a50', foreground=CYAN,
-                        relief='flat', font=('TkDefaultFont', 8, 'bold'))
-        style.configure('TNotebook', background=BG, borderwidth=0)
-        style.configure('TNotebook.Tab', background='#0a1b34', foreground=TEXT, padding=(14, 8))
-        notebook = ttk.Notebook(win)
+        # Dark neon theme: explicitly style normal, active and selected states.
+        style.configure('VkusArchive.Treeview', background='#071426', foreground='#e7f0ff',
+                        fieldbackground='#071426', rowheight=34, borderwidth=0,
+                        relief='flat', font=('DejaVu Sans', 9))
+        style.map('VkusArchive.Treeview',
+                  background=[('selected', '#173d78')],
+                  foreground=[('selected', '#ffffff')])
+        style.configure('VkusArchive.Treeview.Heading', background='#102d56',
+                        foreground='#35ddff', relief='flat',
+                        font=('DejaVu Sans', 8, 'bold'), padding=(10, 10))
+        style.map('VkusArchive.Treeview.Heading',
+                  background=[('active', '#1b477c')],
+                  foreground=[('active', '#ffffff')])
+        style.configure('VkusArchive.TNotebook', background='#030817',
+                        borderwidth=0, tabmargins=(3, 5, 3, 0))
+        style.configure('VkusArchive.TNotebook.Tab', background='#0a1b34',
+                        foreground='#9db4d9', padding=(18, 10),
+                        font=('DejaVu Sans', 8, 'bold'), borderwidth=0)
+        style.map('VkusArchive.TNotebook.Tab',
+                  background=[('selected', '#12376b'), ('active', '#102b52')],
+                  foreground=[('selected', '#38ddff'), ('active', '#ffffff')])
+        style.configure('VkusArchive.Vertical.TScrollbar', troughcolor='#030817',
+                        background='#173d70', bordercolor='#030817',
+                        arrowcolor='#38ddff', relief='flat', borderwidth=0, width=11)
+        style.configure('VkusArchive.Horizontal.TScrollbar', troughcolor='#030817',
+                        background='#173d70', bordercolor='#030817',
+                        arrowcolor='#38ddff', relief='flat', borderwidth=0, width=11)
+        style.map('VkusArchive.Vertical.TScrollbar',
+                  background=[('active', '#2862a8')])
+        style.map('VkusArchive.Horizontal.TScrollbar',
+                  background=[('active', '#2862a8')])
+        notebook = ttk.Notebook(win, style='VkusArchive.TNotebook')
         notebook.pack(fill='both', expand=True, padx=12, pady=(0, 10))
         records_tab = tk.Frame(notebook, bg=BG)
         history_tab = tk.Frame(notebook, bg=BG)
@@ -1573,15 +1597,20 @@ class VkusApp:
         table_frame = tk.Frame(records_tab, bg=BG)
         table_frame.pack(fill='both', expand=True, padx=4, pady=(0, 4))
         columns = ('kind', 'author', 'city', 'date', 'body')
-        self.archive_tree = ttk.Treeview(table_frame, columns=columns, show='headings', selectmode='browse')
+        self.archive_tree = ttk.Treeview(table_frame, columns=columns, show='headings',
+                                          selectmode='browse', style='VkusArchive.Treeview')
         headings = {'kind': 'ТИП', 'author': 'АВТОР', 'city': 'ГОРОД', 'date': 'ДАТА', 'body': 'ТЕКСТ'}
         widths = {'kind': 90, 'author': 150, 'city': 120, 'date': 135, 'body': 560}
         for col in columns:
             self.archive_tree.heading(col, text=headings[col])
             self.archive_tree.column(col, width=widths[col], minwidth=65,
                                      anchor='w', stretch=(col == 'body'))
-        yscroll = ttk.Scrollbar(table_frame, orient='vertical', command=self.archive_tree.yview)
-        xscroll = ttk.Scrollbar(table_frame, orient='horizontal', command=self.archive_tree.xview)
+        yscroll = ttk.Scrollbar(table_frame, orient='vertical',
+                                 command=self.archive_tree.yview,
+                                 style='VkusArchive.Vertical.TScrollbar')
+        xscroll = ttk.Scrollbar(table_frame, orient='horizontal',
+                                command=self.archive_tree.xview,
+                                style='VkusArchive.Horizontal.TScrollbar')
         self.archive_tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
         self.archive_tree.grid(row=0, column=0, sticky='nsew')
         yscroll.grid(row=0, column=1, sticky='ns')
@@ -1593,9 +1622,13 @@ class VkusApp:
 
         details = tk.Frame(records_tab, bg='#06152a')
         details.pack(fill='x', padx=4, pady=(0, 5))
-        self.archive_detail = tk.Text(details, height=4, wrap='word', bg='#071426', fg='#dceaff',
-                                      insertbackground=CYAN, relief='flat', font=('TkDefaultFont', 9))
-        self.archive_detail.pack(fill='x', padx=8, pady=8)
+        self.archive_detail = tk.Text(details, height=5, wrap='word', bg='#081a35',
+                                      fg='#dceaff', insertbackground=CYAN, relief='flat',
+                                      bd=0, padx=12, pady=10,
+                                      font=('DejaVu Sans', 9),
+                                      highlightthickness=1,
+                                      highlightbackground='#174078')
+        self.archive_detail.pack(fill='x', padx=9, pady=9)
         self.archive_detail.configure(state='disabled')
 
         actions = tk.Frame(records_tab, bg=BG)
@@ -1613,14 +1646,17 @@ class VkusApp:
         history_frame.pack(fill='both', expand=True, padx=5, pady=7)
         history_cols = ('created', 'query', 'city', 'mode', 'count')
         self.archive_history_tree = ttk.Treeview(history_frame, columns=history_cols,
-                                                 show='headings', selectmode='browse')
+                                                 show='headings', selectmode='browse',
+                                                 style='VkusArchive.Treeview')
         history_heads = {'created': 'ДАТА ПОИСКА', 'query': 'ЗАПРОС', 'city': 'ГОРОД',
                          'mode': 'РЕЖИМ', 'count': 'СОХРАНЕНО'}
         history_widths = {'created': 170, 'query': 430, 'city': 170, 'mode': 120, 'count': 110}
         for col in history_cols:
             self.archive_history_tree.heading(col, text=history_heads[col])
             self.archive_history_tree.column(col, width=history_widths[col], anchor='w')
-        history_scroll = ttk.Scrollbar(history_frame, orient='vertical', command=self.archive_history_tree.yview)
+        history_scroll = ttk.Scrollbar(history_frame, orient='vertical',
+                                        command=self.archive_history_tree.yview,
+                                        style='VkusArchive.Vertical.TScrollbar')
         self.archive_history_tree.configure(yscrollcommand=history_scroll.set)
         self.archive_history_tree.pack(side='left', fill='both', expand=True)
         history_scroll.pack(side='right', fill='y')
@@ -1658,15 +1694,29 @@ class VkusApp:
             if len(body) > 240:
                 body = body[:237] + '...'
             author = row.get('author_name') or row.get('username') or '—'
-            self.archive_tree.insert('', 'end', iid=str(row['item_id']),
-                values=(row.get('kind') or '—', author, row.get('city') or '—',
-                        row.get('date_text') or row.get('last_seen_at') or '—', body))
+            item_id = str(row['item_id'])
+            self.archive_tree.insert('', 'end', iid=item_id,
+                values=(('КОММЕНТАРИЙ' if row.get('kind') == 'comment' else 'ПОСТ'),
+                        author, row.get('city') or '—',
+                        row.get('date_text') or row.get('last_seen_at') or '—', body),
+                tags=('comment' if row.get('kind') == 'comment' else 'post',))
+        self.archive_tree.tag_configure('post', foreground='#e5efff')
+        self.archive_tree.tag_configure('comment', foreground='#8fe7ff')
         if hasattr(self, 'archive_summary'):
             self.archive_summary.config(
                 text=f'Всего в личной базе: {self.archive_store.count_items()} · По фильтру: {total} · Показано: {len(rows)}'
             )
         self.archive_detail.configure(state='normal')
         self.archive_detail.delete('1.0', 'end')
+        if not self.archive_tree.get_children():
+            self.archive_detail.insert('1.0',
+                'ПОКА НЕТ ВЫБРАННОЙ ЗАПИСИ\n'
+                'Выберите найденную публикацию в таблице выше — здесь появятся автор, '
+                'город, интерес, даты обнаружения, полный текст и ссылка.')
+        else:
+            self.archive_detail.insert('1.0',
+                'ВЫБЕРИТЕ ЗАПИСЬ\n'
+                'Нажмите на строку выше, чтобы открыть полную карточку публикации.')
         self.archive_detail.configure(state='disabled')
 
     def _refresh_local_archive_history(self):
@@ -1701,7 +1751,7 @@ class VkusApp:
         )
         self.archive_detail.configure(state='normal')
         self.archive_detail.delete('1.0', 'end')
-        self.archive_detail.insert('1.0', details)
+        self.archive_detail.insert('1.0', 'КАРТОЧКА НАЙДЕННОЙ ПУБЛИКАЦИИ\n' + details)
         self.archive_detail.configure(state='disabled')
 
     def _selected_archive_row(self):

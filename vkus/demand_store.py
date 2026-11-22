@@ -198,7 +198,7 @@ class DemandStore:
 
     def list_recent(self, limit: int = 100) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 1000))
-        with self._connect() as conn:
+        with self._connection() as conn:
             rows = conn.execute(
                 """SELECT kind, body, interest, date_text, source_url, profile_url,
                           author_name, username, city, first_seen_at, last_seen_at

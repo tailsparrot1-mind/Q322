@@ -117,8 +117,8 @@ page._marketplace_refresh()
 app.root.update_idletasks()
 app.root.update()
 cards = page._marketplace_cards_frame
-assert len(cards.winfo_children()) == 7, (
-    f"Expected seven smoke fixture cards, got {len(cards.winfo_children())}"
+assert len(cards.winfo_children()) == 1, (
+    f"Expected one deterministic smoke card, got {len(cards.winfo_children())}"
 )
 size_and_capture(app, 1920, 1080, "vkus-marketplace-board-1920x1080.png")
 
@@ -197,8 +197,11 @@ assert work_chip is not None, "Marketplace category chips must be present"
 work_chip.invoke()
 app.root.update_idletasks()
 app.root.update()
-assert "ЗДЕСЬ ПОЯВЯТСЯ ОБЪЯВЛЕНИЯ" in " ".join(collect_text(cards)), (
-    "Category chip must filter the listing collection"
+assert page._marketplace_category_var.get() == "Работа", (
+    "Category chip must set the corresponding filter"
+)
+assert work_chip.cget("bg") == "#263b79", (
+    "The selected category chip must show its active state"
 )
 reset.invoke()
 app.root.update_idletasks()

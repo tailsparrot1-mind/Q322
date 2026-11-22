@@ -27,6 +27,7 @@ DEFAULTS = {
     'message_contacts_json': '[]',
     'chat_history_json': '{}',
     'search_results_json': '[]',
+    'local_demand_storage_consent': '',
     'search_region': 'Москва и область',
     'search_city': 'Москва',
     'search_source': 'Стены сообществ',

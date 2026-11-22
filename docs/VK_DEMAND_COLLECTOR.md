@@ -44,7 +44,7 @@ The server checks the token hash, source binding, revocation state, source enabl
 ## Current limitations
 - The existing Selenium DOM extraction is reused; VK can change its page structure and selectors. Real live VK extraction has not yet been validated after this adapter was added.
 - Region/city are supplied as explicit command-line filters; this adapter does not infer a user's location from their profile.
-- Intent classification is rule-based, not an ML classifier. Confidence 0.78 means a strong phrase match, not a guarantee that a person is a buyer.
+- Intent classification is rule-based, not an ML classifier. Confidence 0.68 means a strong phrase match, not a guarantee that a person is a buyer.
 - Author label is included only when exposed in the visible search result. No email, phone, or private contact details are collected.
 - This is a collector module/CLI, not yet wired into a new desktop UI control.
 

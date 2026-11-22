@@ -18,8 +18,6 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from vkus.browser import BrowserManager
-
 
 REQUEST_PATTERNS = (
     r"\bищу\s+(?:мастера|специалиста|исполнителя|ремонтника|сантехника|электрика)\b",
@@ -147,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
 
     logger = logging.getLogger("vkus.vk_demand_collector")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    from vkus.browser import BrowserManager
     browser = BrowserManager(logger)
     normalized: dict[str, dict[str, Any]] = {}
     try:

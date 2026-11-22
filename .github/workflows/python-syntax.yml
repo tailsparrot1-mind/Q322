@@ -39,7 +39,7 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install Pillow selenium keyring
       - name: Launch Vkus and test role selection hotspot
-        run: xvfb-run -a .venv/bin/python .github/scripts/smoke_marketplace.py
+        run: xvfb-run -a --server-args="-screen 0 1920x1080x24" .venv/bin/python .github/scripts/smoke_marketplace.py
       - uses: actions/upload-artifact@v4
         with:
           name: Vkus-Q322-marketplace-screenshots

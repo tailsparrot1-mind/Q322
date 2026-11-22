@@ -719,11 +719,13 @@ class VkusApp:
             tk.Label(cell,text=label,bg='#071d39',fg=MUTED,font=('TkDefaultFont',7)).pack(anchor='w',padx=7,pady=(4,0))
             tk.Entry(cell,textvariable=var,bg='#071d39',fg=TEXT,insertbackground=CYAN,relief='flat',bd=0,font=('TkDefaultFont',8)).pack(fill='x',padx=7,pady=(1,5))
         actions=tk.Frame(box,bg='#06162c'); actions.grid(row=2,column=0,columnspan=3,sticky='ew',padx=4,pady=(0,6))
-        tk.Button(actions,text='СОХРАНИТЬ',command=self.save_config,bg='#174aa1',fg='white',activebackground='#2465d1',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
-        tk.Button(actions,text='VK / АВТОРИЗАЦИЯ',command=lambda:self.run_one('auth'),bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
-        tk.Button(actions,text='ЛИЧНЫЙ АРХИВ',command=self._toggle_local_demand_archive,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
-        tk.Button(actions,text='ОТКРЫТЬ АРХИВ',command=self._open_local_demand_archive,bg='#123d78',fg=TEXT,activebackground='#1a579e',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
-        tk.Button(actions,text='ОТКРЫТЬ VK',command=self._open_vk_direct,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        main_actions=tk.Frame(actions,bg='#06162c'); main_actions.pack(fill='x',padx=2,pady=(0,3))
+        archive_actions=tk.Frame(actions,bg='#06162c'); archive_actions.pack(fill='x',padx=2,pady=(0,2))
+        tk.Button(main_actions,text='СОХРАНИТЬ',command=self.save_config,bg='#174aa1',fg='white',activebackground='#2465d1',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(main_actions,text='VK / АВТОРИЗАЦИЯ',command=lambda:self.run_one('auth'),bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(main_actions,text='ОТКРЫТЬ VK',command=self._open_vk_direct,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(archive_actions,text='ЛИЧНЫЙ АРХИВ',command=self._toggle_local_demand_archive,bg='#0d315f',fg=TEXT,activebackground='#1a4e8f',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
+        tk.Button(archive_actions,text='ОТКРЫТЬ АРХИВ',command=self._open_local_demand_archive,bg='#123d78',fg=TEXT,activebackground='#1a579e',relief='flat',bd=0,padx=12,pady=5,font=('TkDefaultFont',8,'bold')).pack(side='left',padx=3)
 
     def _open_vk_direct(self):
         def work():

@@ -426,9 +426,31 @@ def open_cloud_marketplace_window(parent):
               selectforeground=[("readonly", "#eaf1ff")],
               background=[("readonly", "#17264a")])
 
+    ambient = tk.Canvas(win, bg="#030817", highlightthickness=0, bd=0)
+    ambient.place(relwidth=1, relheight=1)
+
+    def paint_ambient(event=None):
+        width = max(1, ambient.winfo_width())
+        height = max(1, ambient.winfo_height())
+        cx, cy = width / 2, height / 2
+        radius = min(width, height) * 0.46
+        ambient.delete("ambient-glow")
+        ambient.create_oval(cx - radius, cy - radius, cx + radius, cy + radius,
+                            outline="#102f70", width=24, tags="ambient-glow")
+        ambient.create_oval(cx - radius * 0.88, cy - radius * 0.88,
+                            cx + radius * 0.88, cy + radius * 0.88,
+                            outline="#0b477f", width=7, tags="ambient-glow")
+        for index in range(22):
+            x = (index * 137 + 41) % width
+            y = (index * 83 + 29) % height
+            color = "#1a75b2" if index % 3 else "#a34fd2"
+            ambient.create_oval(x - 2, y - 2, x + 2, y + 2,
+                                fill=color, outline="", tags="ambient-glow")
+
+    ambient.bind("<Configure>", paint_ambient)
     shell = tk.Frame(win, bg="#07132f", highlightbackground="#5ce7ff",
                      highlightthickness=2)
-    shell.pack(fill="both", expand=True, padx=8, pady=8)
+    shell.pack(fill="both", expand=True, padx=12, pady=12)
     header = tk.Frame(shell, bg="#07122a")
     header.pack(fill="x", padx=22, pady=(14, 8))
     brand = tk.Frame(header, bg="#07122a")

@@ -1511,14 +1511,24 @@ class VkusApp:
                 found = self.browser.search_community_comments(community_url, q, city, region, year=year, month=month, limit=0)
             else:
                 found = self.browser.search_vk(q, city, region, mode=mode, limit=0, year=year, month=month)
-            self.root.after(0, lambda: self._search_finished(found, q, region, city, mode, generation))
+            saved_count = None
+            if self.demand_store is not None:
+                try:
+                    saved_count = self.demand_store.save_search_results(
+                        query=q, region=region, city=city, mode=mode, results=found
+                    )
+                except Exception:
+                    self.logger.exception('Could not archive VK search results locally')
+            self.root.after(0, lambda: self._search_finished(
+                found, q, region, city, mode, generation, saved_count
+            ))
 
         except Exception as exc:
             detail = f'{type(exc).__name__}: {exc}'
             self.logger.exception('VK search failed')
             self.root.after(0, lambda d=detail, g=generation: self._search_failed(d, g))
 
-    def _search_finished(self, found, q, region, city, mode, generation):
+    def _search_finished(self, found, q, region, city, mode, generation, saved_count=None):
         if generation is not None and generation != self._search_generation:
             return
         self._search_running = False
@@ -1532,17 +1542,9 @@ class VkusApp:
             for item in found
         ]
         self.settings['search_results_json'] = json.dumps(self.search_results, ensure_ascii=False)
-        saved_count = 0
-        if self.demand_store is not None:
-            try:
-                saved_count = self.demand_store.save_search_results(
-                    query=q, region=region, city=city, mode=mode, results=found
-                )
-            except Exception:
-                self.logger.exception('Could not archive VK search results locally')
         self._save_persistent_state()
         result_label = "Комментарии" if mode == "comments" else "Посты"
-        archive_label = f" · личная база: {saved_count}" if self.demand_store is not None else ""
+        archive_label = f" · личная база: {saved_count}" if saved_count is not None else ""
         self.results_count.config(text=f'{result_label}: {len(self.search_results)}{archive_label}')
         self._render_results(self.search_results)
         if hasattr(self, 'log'):

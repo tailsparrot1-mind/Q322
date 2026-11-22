@@ -136,9 +136,13 @@ app.root.update_idletasks()
 app.root.update()
 page = app.marketplace_page
 assert not page._marketplace_gate.winfo_ismapped(), "Authenticated user should see the board"
-# Each smoke run starts from a deterministic unfiltered board, even if a
-# developer profile or a prior UI session left filter values populated.
-page._marketplace_reset_button.invoke()
+# Each screenshot starts from a deterministic unfiltered board. Filter
+# variables are set directly; the reset button is tested separately below.
+page._marketplace_query_var.set("")
+page._marketplace_kind_var.set("Все типы")
+page._marketplace_category_var.set("Все категории")
+page._marketplace_city_var.set("")
+page._marketplace_refresh()
 app.root.update_idletasks()
 app.root.update()
 cards = page._marketplace_cards_frame

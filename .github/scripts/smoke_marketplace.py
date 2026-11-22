@@ -23,7 +23,8 @@ class SmokeMarketplaceClient:
             "user_metadata": {"marketplace_role": "Соискатель"},
         }) if self.is_authenticated else None)
 
-    def list_listings(self, search="", **_kwargs):
+    def list_listings(self, search="", kind="Все типы",
+                      category="Все категории", city="", **_kwargs):
         fixtures = [{
             "id": "smoke-listing-1",
             "kind": "Ищу",
@@ -44,6 +45,13 @@ class SmokeMarketplaceClient:
                         if term in row["title"].casefold()
                         or term in row["description"].casefold()
                         or term in row["city"].casefold()]
+        if kind != "Все типы":
+            fixtures = [row for row in fixtures if row["kind"] == kind]
+        if category != "Все категории":
+            fixtures = [row for row in fixtures if row["category"] == category]
+        if city:
+            fixtures = [row for row in fixtures
+                        if city.casefold() in row["city"].casefold()]
         return fixtures
 
 
@@ -129,14 +137,33 @@ search.event_generate("<Return>")
 app.root.update_idletasks()
 app.root.update()
 assert len(cards.winfo_children()) == 1, "No-results state should replace the card"
+empty_text = " ".join(
+    widget.cget("text") for widget in cards.winfo_children()[0].winfo_children()
+    if isinstance(widget, tk.Label)
+)
+assert "ЗДЕСЬ ПОЯВЯТСЯ ОБЪЯВЛЕНИЯ" in empty_text, (
+    "No-results state should display its explanatory heading"
+)
 reset.invoke()
 app.root.update_idletasks()
 app.root.update()
 assert len(cards.winfo_children()) == 1, "Reset action should restore the listing"
+def collect_text(widget):
+    values = []
+    if isinstance(widget, tk.Label):
+        values.append(widget.cget("text"))
+    for child in widget.winfo_children():
+        values.extend(collect_text(child))
+    return values
+assert any("Тестовая заявка: нужен мастер" in value
+           for value in collect_text(cards)), (
+    "Reset must reload and display the matching listing, not only clear fields"
+)
 search.insert(0, "мастер")
 search.event_generate("<Return>")
 app.root.update_idletasks()
 app.root.update()
-assert len(cards.winfo_children()) == 1, "Matching search should restore the card"
+assert any("Тестовая заявка: нужен мастер" in value
+           for value in collect_text(cards)), "Matching search should restore the card"
 app.close()
 print("Marketplace role gate, registration, responsive layouts, board card and search/reset smoke tests passed.")

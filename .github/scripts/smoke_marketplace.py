@@ -190,7 +190,7 @@ def collect_text(widget):
     for child in widget.winfo_children():
         values.extend(collect_text(child))
     return values
-assert any("Тестовая заявка: нужен мастер" in value
+assert any("Нужен мастер для ремонта квартиры" in value
            for value in collect_text(cards)), (
     "Reset must reload and display the matching listing, not only clear fields"
 )
@@ -198,7 +198,7 @@ search.insert(0, "мастер")
 search.event_generate("<Return>")
 app.root.update_idletasks()
 app.root.update()
-assert any("Тестовая заявка: нужен мастер" in value
+assert any("Нужен мастер для ремонта квартиры" in value
            for value in collect_text(cards)), "Matching search should restore the card"
 
 def find_button(widget, caption):

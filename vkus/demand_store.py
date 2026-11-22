@@ -180,16 +180,16 @@ class DemandStore:
                     (self.workspace_id, key),
                 ).fetchone()
                 if row:
-                    conn.execute(
+                    linked = conn.execute(
                         "INSERT OR IGNORE INTO search_run_items(run_id, item_id) VALUES(?, ?)",
                         (run_id, int(row["item_id"])),
                     )
-                    saved += 1
+                    saved += max(0, linked.rowcount)
             conn.execute("UPDATE search_runs SET result_count = ? WHERE run_id = ?", (saved, run_id))
         return saved
 
     def count_items(self) -> int:
-        with self._connect() as conn:
+        with self._connection() as conn:
             row = conn.execute(
                 "SELECT COUNT(*) AS n FROM demand_items WHERE workspace_id = ?",
                 (self.workspace_id,),

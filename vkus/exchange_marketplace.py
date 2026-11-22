@@ -452,7 +452,7 @@ def open_cloud_marketplace_window(parent):
                      highlightthickness=2)
     shell.pack(fill="both", expand=True, padx=12, pady=12)
     header = tk.Frame(shell, bg="#07122a")
-    header.pack(fill="x", padx=22, pady=(14, 8))
+    header.pack(fill="x", padx=22, pady=(8, 5))
     brand = tk.Frame(header, bg="#07122a")
     brand.pack(side="left", padx=(0, 24))
     tk.Label(brand, text="V", bg="#11d9ee", fg="#06122d",
@@ -496,7 +496,7 @@ def open_cloud_marketplace_window(parent):
     update_account_label()
 
     auth_bar = tk.Frame(shell, bg="#0a1731")
-    auth_bar.pack(fill="x", padx=24, pady=(0, 14))
+    auth_bar.pack(fill="x", padx=24, pady=(0, 7))
     email_var = tk.StringVar()
     password_var = tk.StringVar()
     tk.Label(auth_bar, text="Email", bg="#0a1731", fg="#9fb4df",
@@ -512,9 +512,9 @@ def open_cloud_marketplace_window(parent):
 
     hero = tk.Frame(shell, bg="#0a1740", highlightbackground="#3157a1",
                     highlightthickness=1)
-    hero.pack(fill="x", padx=22, pady=(0, 10))
+    hero.pack(fill="x", padx=22, pady=(0, 7))
     hero_left = tk.Frame(hero, bg="#0a1740")
-    hero_left.pack(side="left", fill="x", expand=True, padx=16, pady=11)
+    hero_left.pack(side="left", fill="x", expand=True, padx=16, pady=8)
     tk.Label(hero_left, text="Объявления рядом", bg="#0a1740",
              fg="#ffffff", font=("DejaVu Sans", 17, "bold")).pack(anchor="w")
     tk.Label(hero_left, text="Выбирайте предложения или находите исполнителей в своём городе",
@@ -523,14 +523,14 @@ def open_cloud_marketplace_window(parent):
     tk.Button(hero, text="+  РАЗМЕСТИТЬ ОБЪЯВЛЕНИЕ",
               command=lambda: create_or_edit(),
               bg="#e94db7", fg="white", activebackground="#ff68ce",
-              relief="flat", bd=0, padx=18, pady=10, cursor="hand2",
+              relief="flat", bd=0, padx=18, pady=8, cursor="hand2",
               font=("DejaVu Sans", 8, "bold")).pack(side="right", padx=16, pady=12)
 
     filters_shell = tk.Frame(shell, bg="#0a1a38",
                              highlightbackground="#345c9c", highlightthickness=1)
-    filters_shell.pack(fill="x", padx=22, pady=(0, 8))
+    filters_shell.pack(fill="x", padx=22, pady=(0, 6))
     filters = tk.Frame(filters_shell, bg="#0a1a38")
-    filters.pack(fill="x", padx=14, pady=12)
+    filters.pack(fill="x", padx=14, pady=8)
     query_var = tk.StringVar()
     kind_var = tk.StringVar(value="Все типы")
     category_var = tk.StringVar(value="Все категории")
@@ -559,7 +559,7 @@ def open_cloud_marketplace_window(parent):
                  highlightcolor="#8d4cff", font=("DejaVu Sans", 9))
 
     category_strip = tk.Frame(shell, bg="#07122a")
-    category_strip.pack(fill="x", padx=22, pady=(0, 10))
+    category_strip.pack(fill="x", padx=22, pady=(0, 7))
     tk.Label(category_strip, text="КАТЕГОРИИ", bg="#07122a", fg="#7f9dcf",
              font=("DejaVu Sans", 7, "bold")).pack(side="left", padx=(0, 10))
     category_buttons = {}
@@ -642,7 +642,7 @@ def open_cloud_marketplace_window(parent):
     filters.bind("<Configure>", layout_filter_controls)
 
     body = tk.Frame(shell, bg="#07122a")
-    body.pack(fill="both", expand=True, padx=22, pady=(0, 10))
+    body.pack(fill="both", expand=True, padx=22, pady=(0, 7))
     cards_canvas = tk.Canvas(body, bg="#07122a", highlightthickness=0, bd=0)
     cards_scroll = ttk.Scrollbar(body, orient="vertical", command=cards_canvas.yview,
                                  style="CloudMarket.Vertical.TScrollbar")
@@ -653,14 +653,37 @@ def open_cloud_marketplace_window(parent):
     cards_window = cards_canvas.create_window((0, 0), window=cards_frame, anchor="nw")
     cards_frame.bind("<Configure>", lambda _e: cards_canvas.configure(
         scrollregion=cards_canvas.bbox("all")))
-    cards_canvas.bind("<Configure>", lambda event: cards_canvas.itemconfigure(
-        cards_window, width=event.width))
+
+    def reflow_cards(event=None):
+        width = event.width if event is not None else cards_canvas.winfo_width()
+        cards_canvas.itemconfigure(cards_window, width=width)
+        available = max(520, width - 36)
+        columns = max(1, min(5, available // 238))
+        for column in range(5):
+            cards_frame.grid_columnconfigure(
+                column, weight=1 if column < columns else 0,
+                uniform="market-cards" if column < columns else "",
+                minsize=0,
+            )
+        visible_cards = [child for child in cards_frame.winfo_children()
+                         if child.winfo_manager() == "grid"]
+        card_wrap = max(150, (available - (columns * 18)) // columns - 28)
+        for index, card in enumerate(visible_cards):
+            card.grid_configure(row=index // columns, column=index % columns,
+                                columnspan=1)
+            labels = [child for child in card.winfo_children()
+                      if isinstance(child, tk.Label)]
+            if len(labels) >= 2:
+                labels[0].configure(wraplength=card_wrap)
+                labels[1].configure(wraplength=card_wrap)
+
+    cards_canvas.bind("<Configure>", reflow_cards)
     for column in range(5):
         cards_frame.grid_columnconfigure(column, weight=1, uniform="market-cards")
 
     details_shell = tk.Frame(shell, bg="#10224a",
                              highlightbackground="#3c6aab", highlightthickness=1)
-    details_shell.pack(fill="x", padx=22, pady=(0, 8))
+    details_shell.pack(fill="x", padx=22, pady=(0, 6))
     details = tk.Label(details_shell,
                        text="Выберите карточку, чтобы увидеть полное описание и контакт.",
                        bg="#10224a", fg="#c6d8f7", justify="left", anchor="w",
@@ -671,7 +694,7 @@ def open_cloud_marketplace_window(parent):
         details.configure(wraplength=max(320, event.width - 52))
     details_shell.bind("<Configure>", resize_details)
     actions = tk.Frame(shell, bg="#07122a")
-    actions.pack(fill="x", padx=22, pady=(0, 12))
+    actions.pack(fill="x", padx=22, pady=(0, 8))
     status_label = tk.Label(actions, text="Общая база Supabase · HTTPS",
                             bg="#07122a", fg="#8fa5d4", font=("DejaVu Sans", 8))
     status_label.pack(side="left")

@@ -75,6 +75,7 @@ class SmokeMarketplaceClient:
         if city:
             fixtures = [row for row in fixtures
                         if city.casefold() in row["city"].casefold()]
+        print(f"SMOKE_FIXTURE_COUNT={len(fixtures)} kind={kind!r} category={category!r} city={city!r} search={search!r}")
         return fixtures
 
 
@@ -137,7 +138,9 @@ app.root.update()
 page = app.marketplace_page
 assert not page._marketplace_gate.winfo_ismapped(), "Authenticated user should see the board"
 cards = page._marketplace_cards_frame
-assert len(cards.winfo_children()) == 7, "Expected seven smoke fixture cards"
+assert len(cards.winfo_children()) == 7, (
+    f"Expected seven smoke fixture cards, got {len(cards.winfo_children())}"
+)
 size_and_capture(app, 1920, 1080, "vkus-marketplace-board-1920x1080.png")
 
 # Compact desktop layout: controls must stay inside the filter panel.

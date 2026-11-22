@@ -152,6 +152,16 @@ try:
     page = app.marketplace_page
     web = page._marketplace_webview
 
+    # tkwry's native child WebView must finish Tk layout before JS evaluation.
+    # On Linux/WebKitGTK an early eval can remain queued forever while the
+    # X11 child surface is still being created, even though Tk itself updates.
+    page.update_idletasks()
+    page.update()
+    web.sync_bounds()
+    if not web.wait_until_ready():
+        raise AssertionError("Marketplace WebView did not become layout-ready")
+    pump(app.root, 0.5)
+
     ready = js(web, app.root, "document.readyState")
     # WebKitGTK may report "interactive" while the local app:// document is
     # already parsed and its deferred JS is still finishing. The actual

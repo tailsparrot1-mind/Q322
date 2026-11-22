@@ -46,9 +46,9 @@ def classify_intent(text: str) -> tuple[str, float]:
     request = any(re.search(p, value, re.I) for p in REQUEST_PATTERNS)
     offer = any(re.search(p, value, re.I) for p in OFFER_PATTERNS)
     if request and not offer:
-        return "request", 0.78
+        return "request", 0.68
     if offer and not request:
-        return "offer", 0.78
+        return "offer", 0.68
     return "unknown", 0.0
 
 

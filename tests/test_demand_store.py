@@ -77,6 +77,29 @@ class DemandStoreTests(unittest.TestCase):
             self.assertEqual(reopened.workspace_id, workspace_id)
             self.assertEqual(reopened.count_items(), 1)
 
+    def test_filters_search_runs_and_delete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = DemandStore(Path(tmp) / "filters.sqlite3")
+            first = {"text": "Ищу электрика для квартиры", "kind": "post",
+                     "url": "https://vk.ru/wall-1_1", "author_name": "Алексей", "city": "Орск"}
+            second = {"comment_text": "Предлагаю услуги сантехника", "kind": "comment",
+                      "url": "https://vk.ru/wall-2_2", "author_name": "Мария", "city": "Оренбург"}
+            store.save_search_results(query="электрик", region="", city="Орск",
+                                      mode="posts", results=[first])
+            store.save_search_results(query="сантехник", region="", city="Оренбург",
+                                      mode="comments", results=[second])
+            self.assertEqual(store.count_filtered(query="электрик"), 1)
+            self.assertEqual(store.count_filtered(kind="comment"), 1)
+            self.assertEqual(store.count_filtered(city="Орск"), 1)
+            runs = store.list_search_runs()
+            self.assertEqual(len(runs), 2)
+            run_items = store.list_items(run_id=runs[0]["run_id"])
+            self.assertEqual(len(run_items), 1)
+            self.assertEqual(run_items[0]["body"], "Предлагаю услуги сантехника")
+            self.assertTrue(store.delete_item(run_items[0]["item_id"]))
+            self.assertEqual(store.count_items(), 1)
+            self.assertFalse(store.delete_item(run_items[0]["item_id"]))
+
 
 if __name__ == "__main__":
     unittest.main()

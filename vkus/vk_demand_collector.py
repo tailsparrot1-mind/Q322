@@ -1,19 +1,20 @@
-"""Collect public VK search results and send reviewed candidates to Vkus Demand Engine.
+"""Normalize user-selected VK public posts/comments for the Vkus demand engine.
 
-Uses the existing Vkus BrowserManager/Firefox profile. It does not bypass VK access
-controls, access private content, send messages, or automate account actions.
-Uploads are opt-in via --upload; otherwise records are printed for review.
+This module intentionally does not automate VK page collection. VK terms may
+restrict automated collection and commercial reuse; use only data supplied by
+the user under an approved collection basis. Backend upload remains disabled
+until the VK source has been terms-reviewed and enabled.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import logging
 import os
 import re
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -41,7 +42,7 @@ OFFER_PATTERNS = (
 
 
 def classify_intent(text: str) -> tuple[str, float]:
-    """Conservative rules: ambiguous/weak signals remain unknown."""
+    """Conservative rules; heuristic matches remain below backend auto-activation threshold."""
     value = re.sub(r"\s+", " ", str(text or "").lower()).strip()
     request = any(re.search(p, value, re.I) for p in REQUEST_PATTERNS)
     offer = any(re.search(p, value, re.I) for p in OFFER_PATTERNS)
@@ -55,7 +56,7 @@ def classify_intent(text: str) -> tuple[str, float]:
 def _stable_key(item: dict[str, Any]) -> str:
     source = str(item.get("url") or "").strip()
     body = re.sub(r"\s+", " ", str(item.get("comment_text") or item.get("text") or "")).strip().lower()
-    kind = "comment" if item.get("kind") == "comments" else "post"
+    kind = "comment" if item.get("kind") in ("comment", "comments") else "post"
     raw = f"vk|{kind}|{source}|{body}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -85,7 +86,7 @@ def normalize_result(item: dict[str, Any], city: str = "", region: str = "") -> 
         pass
     return {
         "external_key": _stable_key(item),
-        "source_kind": "comment" if item.get("kind") == "comments" else "post",
+        "source_kind": "comment" if item.get("kind") in ("comment", "comments") else "post",
         "intent": intent,
         "category": None,
         "title": _title(body),
@@ -98,6 +99,19 @@ def normalize_result(item: dict[str, Any], city: str = "", region: str = "") -> 
         "published_at": published_at,
         "intent_confidence": confidence,
     }
+
+
+def load_user_selected_items(path: str) -> list[dict[str, Any]]:
+    """Read only an explicit user-prepared JSON export; never fetch VK pages."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    items = data.get("items") if isinstance(data, dict) else data
+    if not isinstance(items, list):
+        raise ValueError("Input JSON must be an array or an object containing an 'items' array")
+    if len(items) > 1000:
+        raise ValueError("A local import file cannot contain more than 1000 items")
+    if not all(isinstance(item, dict) for item in items):
+        raise ValueError("Every input item must be a JSON object")
+    return items
 
 
 def upload_batch(endpoint: str, source_id: str, token: str, items: list[dict[str, Any]]) -> dict[str, Any]:
@@ -126,66 +140,44 @@ def upload_batch(endpoint: str, source_id: str, token: str, items: list[dict[str
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Vkus VK public-demand collector")
-    parser.add_argument("--query", action="append", required=True, help="VK search phrase; repeat to add phrases")
-    parser.add_argument("--mode", choices=("posts", "comments"), default="posts")
+    parser = argparse.ArgumentParser(description="Vkus VK user-selected content importer")
+    parser.add_argument("--input-json", required=True, help="JSON file with user-selected VK posts/comments")
     parser.add_argument("--city", default="")
     parser.add_argument("--region", default="")
-    parser.add_argument("--limit", type=int, default=30, help="maximum results per query")
-    parser.add_argument("--upload", action="store_true", help="send results to Vkus; default is review-only dry run")
-    parser.add_argument("--json-out", default="", help="optional path for a local JSON review file")
+    parser.add_argument("--upload", action="store_true", help="send normalized records; default is review-only")
+    parser.add_argument("--json-out", default="", help="optional path for normalized JSON review output")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    if args.limit < 1 or args.limit > 100:
-        print("ERROR: --limit must be between 1 and 100", file=sys.stderr)
+    try:
+        raw_items = load_user_selected_items(args.input_json)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(f"INPUT ERROR: {exc}", file=sys.stderr)
         return 2
 
-    logger = logging.getLogger("vkus.vk_demand_collector")
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    from vkus.browser import BrowserManager
-    browser = BrowserManager(logger)
-    normalized: dict[str, dict[str, Any]] = {}
-    try:
-        for query in args.query:
-            logger.info("Searching public VK %s for: %s", args.mode, query)
-            results = browser.search_vk(
-                query=query,
-                city=args.city,
-                region=args.region,
-                mode=args.mode,
-                limit=args.limit,
-            )
-            for result in results:
-                record = normalize_result(result, city=args.city, region=args.region)
-                if record:
-                    normalized[record["external_key"]] = record
-    except Exception as exc:
-        logger.exception("VK collection failed")
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
-    finally:
-        # Vkus may already own this persistent Firefox session. Detach the
-        # collector's atexit handler instead of quitting the shared browser.
-        import atexit
-        try:
-            atexit.unregister(browser.stop)
-        except Exception:
-            pass
+    records: dict[str, dict[str, Any]] = {}
+    rejected = 0
+    for item in raw_items:
+        record = normalize_result(item, city=args.city, region=args.region)
+        if record:
+            records[record["external_key"]] = record
+        else:
+            rejected += 1
 
-    records = list(normalized.values())
-    print(json.dumps({"collected": len(records), "items": records}, ensure_ascii=False, indent=2))
+    normalized = list(records.values())
+    output = {"imported": len(normalized), "rejected": rejected, "items": normalized}
+    rendered = json.dumps(output, ensure_ascii=False, indent=2)
+    print(rendered)
     if args.json_out:
-        with open(args.json_out, "w", encoding="utf-8") as handle:
-            json.dump({"collected": len(records), "items": records}, handle, ensure_ascii=False, indent=2)
+        Path(args.json_out).write_text(rendered + "\n", encoding="utf-8")
 
     if not args.upload:
-        print("DRY RUN: nothing was uploaded. Inspect results, then rerun with --upload.", file=sys.stderr)
+        print("REVIEW ONLY: nothing was uploaded. Inspect the normalized records first.", file=sys.stderr)
         return 0
-    if not records:
-        print("No eligible public results; upload skipped.", file=sys.stderr)
+    if not normalized:
+        print("No eligible records; upload skipped.", file=sys.stderr)
         return 0
 
     endpoint = os.environ.get("VKUS_SUPABASE_URL", "").strip()
@@ -197,12 +189,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         outcomes = []
-        for start in range(0, len(records), 100):
-            outcomes.append(upload_batch(endpoint, source_id, token, records[start:start + 100]))
+        for start in range(0, len(normalized), 100):
+            outcomes.append(upload_batch(endpoint, source_id, token, normalized[start:start + 100]))
         print(json.dumps({"upload_results": outcomes}, ensure_ascii=False, indent=2))
         return 0 if all(x.get("status") == "success" for x in outcomes) else 1
     except Exception as exc:
-        logger.exception("Upload failed")
         print(f"UPLOAD ERROR: {exc}", file=sys.stderr)
         return 1
 

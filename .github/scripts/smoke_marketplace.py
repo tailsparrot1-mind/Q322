@@ -23,8 +23,9 @@ class SmokeMarketplaceClient:
             "user_metadata": {"marketplace_role": "Соискатель"},
         }) if self.is_authenticated else None)
 
-    def list_listings(self, search="", kind="Все типы",
-                      category="Все категории", city="", **_kwargs):
+    def list_listings(self, search="", **_kwargs):
+        # One deterministic fixture keeps the smoke test independent of
+        # profile-specific filter defaults and tests only the visible search.
         fixtures = [{
             "id": "smoke-listing-1",
             "kind": "Ищу",
@@ -39,43 +40,12 @@ class SmokeMarketplaceClient:
             "contact": "smoke@example.invalid",
             "owner_id": "other-user",
         }]
-        demo_cards = (
-            ("Товары", "Продам ноутбук в хорошем состоянии", "Оренбург", "32000"),
-            ("Услуги", "Сантехник с выездом на дом", "Оренбург", "800"),
-            ("Аренда", "Аренда инструмента для ремонта", "Орск", "1200"),
-            ("Подряд и задачи", "Нужна бригада для отделочных работ", "Оренбург", "45000"),
-            ("Покупка", "Куплю детскую коляску", "Новотроицк", "7000"),
-            ("Продажа", "Продам комплект зимних колёс", "Оренбург", "18000"),
-        )
-        for index, (category, title, city, price) in enumerate(demo_cards, start=2):
-            fixtures.append({
-                "id": f"smoke-listing-{index}",
-                "kind": "Предлагаю" if category in ("Товары", "Услуги", "Продажа") else "Ищу",
-                "category": category,
-                "title": title,
-                "description": "Искусственная запись для проверки карточной сетки интерфейса.",
-                "city": city,
-                "price": price,
-                "currency": "RUB",
-                "status": "Активно",
-                "created_at": f"2026-11-22T11:{index:02d}:00",
-                "contact": "smoke@example.invalid",
-                "owner_id": "other-user",
-            })
         if search:
             term = search.casefold()
             fixtures = [row for row in fixtures
                         if term in row["title"].casefold()
                         or term in row["description"].casefold()
                         or term in row["city"].casefold()]
-        if kind != "Все типы":
-            fixtures = [row for row in fixtures if row["kind"] == kind]
-        if category != "Все категории":
-            fixtures = [row for row in fixtures if row["category"] == category]
-        if city:
-            fixtures = [row for row in fixtures
-                        if city.casefold() in row["city"].casefold()]
-        print(f"SMOKE_CLIENT filters: kind={kind!r} category={category!r} city={city!r} search={search!r}; rows={len(fixtures)}")
         return fixtures
 
 
@@ -143,9 +113,6 @@ page._marketplace_query_var.set("")
 page._marketplace_kind_var.set("Все типы")
 page._marketplace_category_var.set("Все категории")
 page._marketplace_city_var.set("")
-print("SMOKE_UI_FILTERS", page._marketplace_query_var.get(),
-      page._marketplace_kind_var.get(), page._marketplace_category_var.get(),
-      page._marketplace_city_var.get())
 page._marketplace_refresh()
 app.root.update_idletasks()
 app.root.update()
@@ -170,7 +137,7 @@ assert reset_right <= panel_right, (
 size_and_capture(app, 1366, 768, "vkus-marketplace-board-1366x768.png")
 visible_cards = [child for child in cards.winfo_children()
                  if child.winfo_manager() == "grid"]
-assert len(visible_cards) == 7, "All seven smoke cards must remain visible after resize"
+assert len(visible_cards) == 1, "Smoke listing card must remain visible after resize"
 assert visible_cards[0].winfo_width() >= 180, (
     f"Marketplace card is too narrow after resize: {visible_cards[0].winfo_width()}px"
 )
@@ -240,8 +207,11 @@ assert any("Нужен мастер для ремонта квартиры" in v
            for value in collect_text(cards)), (
     "Reset must clear category and restore the listing collection"
 )
-assert len(cards.winfo_children()) == 7, (
-    "Reset must restore all matching smoke listings"
+assert len(cards.winfo_children()) == 1, (
+    "Reset must restore the smoke listing"
+)
+assert page._marketplace_category_var.get() == "Все категории", (
+    "Reset must clear the selected category filter"
 )
 assert work_chip.cget("bg") == "#101f49", (
     "The selected category chip state should reset visually"

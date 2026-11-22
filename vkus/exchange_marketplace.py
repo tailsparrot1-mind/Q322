@@ -1271,6 +1271,10 @@ def open_cloud_marketplace_window(parent):
     # Stable handles for the repository's UI smoke test; normal users interact
     # with the same visible controls and callbacks.
     win._marketplace_search_entry = query_entry
+    win._marketplace_query_var = query_var
+    win._marketplace_kind_var = kind_var
+    win._marketplace_category_var = category_var
+    win._marketplace_city_var = city_var
     win._marketplace_reset_button = reset_button
     win._marketplace_filters_panel = filters_shell
     win._marketplace_cards_frame = cards_frame

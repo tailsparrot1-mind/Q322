@@ -154,8 +154,14 @@ try:
 
     ready = js(web, app.root, "document.readyState")
     assert ready == "complete", f"Marketplace HTML did not finish loading: {ready!r}"
-    gate_visible = js(web, app.root,
-        "!document.getElementById('roleGate').classList.contains('hidden')")
+    deadline = time.monotonic() + 10
+    gate_visible = False
+    while time.monotonic() < deadline:
+        gate_visible = js(web, app.root,
+            "!document.getElementById('roleGate').classList.contains('hidden')")
+        if gate_visible:
+            break
+        pump(app.root, 0.1)
     assert gate_visible is True, "Unauthenticated user should see the role gate"
     capture(app, "vkus-marketplace-role-gate.png")
 

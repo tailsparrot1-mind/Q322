@@ -64,6 +64,19 @@ class DemandStoreTests(unittest.TestCase):
             )
             self.assertEqual(store.count_items(), 0)
 
+    def test_workspace_id_survives_reopen(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "persistent.sqlite3"
+            first = DemandStore(path)
+            workspace_id = first.workspace_id
+            first.save_search_results(
+                query="ремонт", region="", city="", mode="posts",
+                results=[{"text": "Ищу мастера", "url": "https://vk.ru/wall-3_4"}],
+            )
+            reopened = DemandStore(path)
+            self.assertEqual(reopened.workspace_id, workspace_id)
+            self.assertEqual(reopened.count_items(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,7 @@ not uploaded to Supabase and is not shared between Vkus installations.
 from __future__ import annotations
 
 import hashlib
+import os
 import sqlite3
 import uuid
 from contextlib import contextmanager
@@ -41,8 +42,16 @@ class DemandStore:
 
     def __init__(self, path: str | Path | None = None):
         self.path = Path(path).expanduser() if path else DEFAULT_DB_PATH
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            os.chmod(self.path.parent, 0o700)
+        except OSError:
+            pass
         self.workspace_id = self._initialize()
+        try:
+            os.chmod(self.path, 0o600)
+        except OSError:
+            pass
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.path), timeout=15)

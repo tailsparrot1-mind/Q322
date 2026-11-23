@@ -178,13 +178,35 @@ try:
             break
         pump(app.root, 0.1)
     assert gate_visible is True, "Unauthenticated user should see the role gate"
+
+    # Startup bootstrap must complete after the local app:// navigation settles;
+    # a cancelled first RPC otherwise leaves a visible "Нет соединения" toast.
+    deadline = time.monotonic() + 10
+    connection_ready = False
+    while time.monotonic() < deadline:
+        connection_ready = js(web, app.root,
+            "document.getElementById('connectionState').textContent.includes('Общая база Vkus · HTTPS')")
+        if connection_ready:
+            break
+        pump(app.root, 0.1)
+    assert connection_ready is True, "Initial Marketplace bootstrap RPC did not complete"
+    startup_toast = js(web, app.root, "document.getElementById('toast').textContent.trim()")
+    assert not startup_toast, f"Unexpected startup RPC error: {startup_toast}"
     capture(app, "vkus-marketplace-role-gate.png")
 
+    # Both role cards must open the correct account flow.
+    js(web, app.root,
+       "document.querySelector('[data-role=\\\"Рекламодатель\\\"]').click(); 'ok'")
+    advertiser_hint = js(web, app.root, "document.getElementById('authRoleHint').textContent")
+    assert "размещаю" in advertiser_hint, "Advertiser role should open its matching auth flow"
+    js(web, app.root, "document.getElementById('authBack').click(); 'back'")
     js(web, app.root,
        "document.querySelector('[data-role=\\\"Соискатель\\\"]').click(); 'ok'")
     auth_visible = js(web, app.root,
         "!document.getElementById('authModal').classList.contains('hidden')")
     assert auth_visible is True, "Role selection should open the login/registration form"
+    seeker_hint = js(web, app.root, "document.getElementById('authRoleHint').textContent")
+    assert "ищу" in seeker_hint, "Seeker role should open its matching auth flow"
     capture(app, "vkus-marketplace-auth-form.png")
 
     js(web, app.root, """
@@ -232,10 +254,54 @@ try:
     selected = js(web, app.root,
         "document.querySelector('[data-category=\\\"Работа\\\"]').classList.contains('active')")
     assert selected is True, "Category chip should show its active state"
+    deadline = time.monotonic() + 10
+    category_empty = False
+    while time.monotonic() < deadline:
+        category_empty = js(web, app.root, "!!document.querySelector('.empty-state')")
+        if category_empty:
+            break
+        pump(app.root, 0.1)
+    assert category_empty is True, "Category filter should affect the listing results"
     js(web, app.root, "document.getElementById('resetFilters').click(); 'reset'")
     reset_category = js(web, app.root,
         "document.querySelector('[data-category=\\\"Все категории\\\"]').classList.contains('active')")
     assert reset_category is True, "Reset should restore the all-categories chip"
+
+    js(web, app.root, "document.getElementById('kind').value='Предлагаю'; document.getElementById('applyFilters').click(); 'kind'")
+    deadline = time.monotonic() + 10
+    kind_empty = False
+    while time.monotonic() < deadline:
+        kind_empty = js(web, app.root, "!!document.querySelector('.empty-state')")
+        if kind_empty:
+            break
+        pump(app.root, 0.1)
+    assert kind_empty is True, "Type filter should affect the listing results"
+    js(web, app.root, "document.getElementById('kind').value='Ищу'; document.getElementById('applyFilters').click(); 'kind'")
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        count = js(web, app.root, "document.querySelectorAll('.listing-card').length")
+        if count == 1:
+            break
+        pump(app.root, 0.1)
+    assert count == 1, "Type filter reset should restore the matching listing"
+
+    js(web, app.root, "document.getElementById('city').value='Москва'; document.getElementById('applyFilters').click(); 'city'")
+    deadline = time.monotonic() + 10
+    city_empty = False
+    while time.monotonic() < deadline:
+        city_empty = js(web, app.root, "!!document.querySelector('.empty-state')")
+        if city_empty:
+            break
+        pump(app.root, 0.1)
+    assert city_empty is True, "City filter should affect the listing results"
+    js(web, app.root, "document.getElementById('city').value='Оренбург'; document.getElementById('applyFilters').click(); 'city'")
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        count = js(web, app.root, "document.querySelectorAll('.listing-card').length")
+        if count == 1:
+            break
+        pump(app.root, 0.1)
+    assert count == 1, "City filter reset should restore the matching listing"
 
     app.root.geometry("1366x768+0+0")
     pump(app.root, 0.5)
@@ -246,18 +312,57 @@ try:
     assert grid_columns, "Responsive CSS grid should be active"
     capture(app, "vkus-marketplace-board-1366x768.png")
 
+    # Exercise the actual HTML publish form -> Python RPC -> client create path.
+    js(web, app.root, "document.getElementById('resetFilters').click(); 'reset'")
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        count = js(web, app.root, "document.querySelectorAll('.listing-card').length")
+        if count == 1:
+            break
+        pump(app.root, 0.1)
+    js(web, app.root, "document.getElementById('publishButton').click(); 'publish'")
+    publish_visible = js(web, app.root,
+        "!document.getElementById('listingModal').classList.contains('hidden')")
+    assert publish_visible is True, "Publish action should open the listing form"
+    js(web, app.root, """
+      document.getElementById('listingKind').value='Предлагаю';
+      document.getElementById('listingCategory').value='Услуги';
+      document.getElementById('listingTitle').value='Smoke: тестовая публикация';
+      document.getElementById('listingDescription').value='Проверка публикации через JS и Python RPC.';
+      document.getElementById('listingCity').value='Оренбург';
+      document.getElementById('listingPrice').value='2500';
+      document.getElementById('listingCurrency').value='RUB';
+      document.getElementById('listingContact').value='@smoke';
+      document.getElementById('listingSave').click();
+      'submitted'
+    """)
+    deadline = time.monotonic() + 15
+    published = False
+    while time.monotonic() < deadline:
+        published = js(web, app.root,
+            "Array.from(document.querySelectorAll('.listing-card')).some(card => card.textContent.includes('Smoke: тестовая публикация'))")
+        if published:
+            break
+        pump(app.root, 0.1)
+    assert published is True, "Publishing through the HTML form and Python RPC should add a listing"
+    assert js(web, app.root, "document.querySelectorAll('.listing-card').length") == 2, (
+        "Published listing should appear alongside the existing listing"
+    )
+
     report = {
         "result": "PASS",
         "renderer": "tkwry WebView / local HTML CSS JS",
         "tests": [
             "HTML document loaded inside real VkusApp",
+            "initial Marketplace bootstrap RPC completed without navigation cancellation",
             "role gate displayed for unauthenticated user",
-            "role selection opened HTML auth form",
+            "both role cards opened their matching HTML auth flow",
             "RPC login authenticated the test user",
             "listing data rendered as HTML cards",
-            "search produced empty state",
-            "reset restored the listing",
-            "category chip active state and reset",
+            "keyword search produced empty state",
+            "category, type and city filters changed the result set",
+            "filter reset restored the listing",
+            "listing publication completed through HTML-to-Python RPC",
             "responsive layout at 1920x1080 and 1366x768",
         ],
         "screenshots": [

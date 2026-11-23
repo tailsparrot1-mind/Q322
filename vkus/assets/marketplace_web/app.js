@@ -38,4 +38,9 @@ $("searchGo").onclick=applyFilters;$("applyFilters").onclick=applyFilters;$("res
 $("categoryNav").querySelectorAll("[data-category]").forEach(button=>button.onclick=()=>setCategory(button.dataset.category));
 $("signOut").onclick=async()=>{const result=await rpc("marketplace_sign_out");if(!result.ok){toast(result.message);return}state.authenticated=false;state.role="";state.email="";state.userId="";updateAccount();show("roleGate");toast("Вы вышли из аккаунта")};
 $("sortButton").onclick=()=>toast("Сначала новые — сортировка по дате публикации");
-bootstrap();
+function scheduleBootstrap(){
+  const start=()=>window.setTimeout(()=>bootstrap(),250);
+  if(document.readyState==="complete")start();
+  else window.addEventListener("load",start,{once:true});
+}
+scheduleBootstrap();

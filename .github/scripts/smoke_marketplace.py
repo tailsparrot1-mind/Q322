@@ -224,6 +224,8 @@ try:
             break
         pump(app.root, 0.1)
     assert connection_ready is True, "Marketplace should recover its connected state after a successful retry"
+    js(web, app.root,
+       "document.getElementById('toast').classList.remove('show'); document.getElementById('toast').textContent=''; 'cleared'")
     capture(app, "vkus-marketplace-role-gate.png")
 
     # Both role cards must open the correct account flow.
@@ -257,6 +259,8 @@ try:
     gate_hidden = js(web, app.root,
         "document.getElementById('roleGate').classList.contains('hidden')")
     assert gate_hidden is True, "Successful login should dismiss the role gate"
+    js(web, app.root,
+       "document.getElementById('toast').classList.remove('show'); document.getElementById('toast').textContent=''; 'cleared'")
     capture(app, "vkus-marketplace-board-1920x1080.png")
 
     js(web, app.root, """

@@ -14,7 +14,29 @@ grid.querySelectorAll(".listing-card").forEach(card=>{const open=()=>openDetail(
 function updateAccount(){const logged=state.authenticated;$("accountState").textContent=logged?(state.email||"Вход выполнен"):"Гостевой просмотр";$("avatar").textContent=logged?(state.email||"V").slice(0,1).toUpperCase():"V";$("signOut").classList.toggle("hidden",!logged);$("inboxOpen").classList.toggle("hidden",!logged);$("profileOpen").classList.toggle("hidden",!logged)}
 function setCategory(value){state.category=value;document.querySelectorAll(".category-chip").forEach(b=>b.classList.toggle("active",b.dataset.category===value));$("kind").value=$("kind").value;applyFilters()}
 async function rpc(name,data={}){return await window.tkwry.invoke(name,data)}
-async function bootstrap(){try{$("connectionState").innerHTML='<i class="live-dot"></i> Подключение к общей базе';const result=await rpc("marketplace_bootstrap");state.authenticated=!!result.authenticated;state.role=result.role||"";state.email=result.email||"";state.userId=result.user_id||"";renderCards(result.listings||[]);$("connectionState").innerHTML='<i class="live-dot"></i> Общая база Vkus · HTTPS';updateAccount();if(result.error)toast(result.error);if(!state.role){show("roleGate")}else{hide("roleGate")}}catch(error){$("connectionState").textContent="Нет соединения";renderCards([]);toast(error.message||"Не удалось загрузить Marketplace")}}
+async function bootstrap(){
+  try{
+    $("connectionState").innerHTML='<i class="live-dot"></i> Подключение к общей базе';
+    const result=await rpc("marketplace_bootstrap");
+    state.authenticated=!!result.authenticated;
+    state.role=result.role||"";
+    state.email=result.email||"";
+    state.userId=result.user_id||"";
+    renderCards(result.listings||[]);
+    updateAccount();
+    if(result.error){
+      $("connectionState").textContent="Ошибка загрузки Marketplace";
+      toast(result.error);
+    }else{
+      $("connectionState").innerHTML='<i class="live-dot"></i> Общая база Vkus · HTTPS';
+    }
+    if(!state.role){show("roleGate")}else{hide("roleGate")}
+  }catch(error){
+    $("connectionState").textContent="Нет соединения";
+    renderCards([]);
+    toast(error.message||"Не удалось загрузить Marketplace");
+  }
+}
 let searchTimer=null;
 async function applyFilters(){const query=$("filterSearch").value.trim()||$("search").value.trim();$("resultCount").textContent="Обновляем выдачу…";try{const result=await rpc("marketplace_search",{search:query,kind:$("kind").value,category:state.category,city:$("city").value.trim()});if(result.error)toast(result.error);renderCards(result.listings||[])}catch(error){toast(error.message||"Ошибка поиска")}}
 function openAuth(role){state.role=role;state.authMode="login";$("authTitle").textContent="Войти в Marketplace";$("authRoleHint").textContent=role==="Соискатель"?"Роль: ищу товары, услуги и исполнителей":"Роль: размещаю товары, услуги и объявления";$("authError").textContent="";$("authSubmit").textContent="Войти";$("authSwitch").textContent="Нет аккаунта? Зарегистрироваться";hide("roleGate");show("authModal")}

@@ -15,6 +15,7 @@ class SmokeMarketplaceClient:
     def __init__(self):
         self.session = None
         self.session_persistence_available = True
+        self.list_error = ""
         self.rows = [{
             "id": "smoke-listing-1",
             "owner_id": "other-user",
@@ -36,6 +37,8 @@ class SmokeMarketplaceClient:
 
     def list_listings(self, *, search="", kind="Все типы",
                       category="Все категории", city="", limit=100, offset=0):
+        if self.list_error:
+            raise ValueError(self.list_error)
         rows = list(self.rows)
         if search:
             term = search.casefold()
@@ -192,6 +195,35 @@ try:
     assert connection_ready is True, "Initial Marketplace bootstrap RPC did not complete"
     startup_toast = js(web, app.root, "document.getElementById('toast').textContent.trim()")
     assert not startup_toast, f"Unexpected startup RPC error: {startup_toast}"
+
+    # A handled backend error must not be rendered as a healthy connection.
+    client = page._marketplace_client
+    client.list_error = "Smoke: simulated listing load failure"
+    js(web, app.root, "bootstrap(); 'started'")
+    deadline = time.monotonic() + 10
+    error_state = False
+    while time.monotonic() < deadline:
+        error_state = js(web, app.root,
+            "document.getElementById('connectionState').textContent === 'Ошибка загрузки Marketplace'")
+        if error_state:
+            break
+        pump(app.root, 0.1)
+    assert error_state is True, "Bootstrap backend errors must not show a connected state"
+    error_toast = js(web, app.root,
+        "document.getElementById('toast').textContent.includes('Smoke: simulated listing load failure')")
+    assert error_toast is True, "Bootstrap backend error should be visible to the user"
+
+    client.list_error = ""
+    js(web, app.root, "bootstrap(); 'retry'")
+    deadline = time.monotonic() + 10
+    connection_ready = False
+    while time.monotonic() < deadline:
+        connection_ready = js(web, app.root,
+            "document.getElementById('connectionState').textContent.includes('Общая база Vkus · HTTPS')")
+        if connection_ready:
+            break
+        pump(app.root, 0.1)
+    assert connection_ready is True, "Marketplace should recover its connected state after a successful retry"
     capture(app, "vkus-marketplace-role-gate.png")
 
     # Both role cards must open the correct account flow.
@@ -355,6 +387,7 @@ try:
         "tests": [
             "HTML document loaded inside real VkusApp",
             "initial Marketplace bootstrap RPC completed without navigation cancellation",
+            "bootstrap backend errors show a failure state and recover after retry",
             "role gate displayed for unauthenticated user",
             "both role cards opened their matching HTML auth flow",
             "RPC login authenticated the test user",

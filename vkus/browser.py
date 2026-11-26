@@ -777,7 +777,7 @@ class BrowserManager:
             while time.time() < deadline:
                 driver.execute_script("window.scrollTo(0, Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));")
                 time.sleep(.8)
-                found = driver.execute_script("""
+                found = driver.execute_script(r"""
                     const q = String(arguments[0] || '').trim().toLowerCase();
                     const norm = v => (v || '').replace(/\s+/g, ' ').trim();
                     const clean = v => { try { return new URL(v, location.href).href; } catch (_) { return String(v || ''); } };
